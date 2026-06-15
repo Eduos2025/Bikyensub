@@ -15,8 +15,9 @@ import Modal from "react-native-modal";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as LocalAuthentication from "expo-local-authentication";
 
-import { AppLogo } from "@/constants/logo";
+import { AppLogo } from "@/constants/images";
 import { styles } from "@/constants/styles";
+import { endPoints } from "@/constants/urls";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import AlertModal from "./components/AlertModal";
@@ -89,21 +90,18 @@ const Login = () => {
         }
 
         // ✅ Send token to server
-        const response = await fetch(
-          "https://api.rahausub.com.ng/verifyToken.php",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ token }),
+        const response = await fetch(endPoints.verifyToken, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        );
+          body: JSON.stringify({ token }),
+        });
 
         const json = await response.json();
 
         if (json.success) {
-          router.replace("/Dashboard");
+          router.replace("/dashboard");
         } else {
           alert("Session expired. Please login again.");
         }
@@ -127,7 +125,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch("https://api.rahausub.com.ng/login.php", {
+      const response = await fetch(endPoints.login, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -147,7 +145,7 @@ const Login = () => {
         setAlertMessage(json.message);
         setAlertVisible(true);
 
-        router.replace("/Dashboard");
+        router.replace("/dashboard");
       } else {
         setAlertTitle("Login Failed");
         setAlertMessage(json.message || "Invalid credentials");
@@ -179,7 +177,7 @@ const Login = () => {
           </View>
           <Text
             style={{
-              color: colors.primary,
+              color: colors.text,
               fontSize: 27,
               fontWeight: "bold",
               textAlign: "center",
@@ -273,7 +271,7 @@ const Login = () => {
             style={{ alignSelf: "flex-end", marginBottom: 20, marginTop: -10 }}
           >
             <Text
-              style={{ color: colors.primary, fontSize: 13, fontWeight: "600" }}
+              style={{ color: colors.text, fontSize: 13, fontWeight: "600" }}
             >
               Forgot Password?
             </Text>
@@ -311,7 +309,7 @@ const Login = () => {
                 marginBottom: 100,
                 textAlign: "center",
                 marginTop: 10,
-                color: colors.primary,
+                color: colors.text,
               }}
             >
               Or Login with Fingerprint
@@ -326,7 +324,7 @@ const Login = () => {
               fontSize: 16,
               textAlign: "center",
               marginTop: 20,
-              color: colors.primary,
+              color: colors.text,
             }}
           >
             Don't Have an Account?

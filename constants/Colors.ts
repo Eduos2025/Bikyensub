@@ -1,43 +1,57 @@
 /**
- * Semantic color palette for Rahau Sub.
  * Includes both Light and Dark mode variations.
+ * Updated to match the uploaded BG logo colors.
  */
 
 export const Colors = {
   light: {
-    primary: "#15803d", // Brand green
-    secondary: "#16a34a", // Vibrant green
-    accent: "#3a4c40", // Accent green
-    background: "#f6fff8", // Soft green-tinted white
-    surface: "#ffffff", // Cards/Modals
-    text: "#14532d", // Deep green text
-    textMuted: "#6b7280", // Neutral muted text
-    border: "#d1fae5", // Light green border
-    inputBorder: "#bbf7d0", // Input borders
-    success: "#16a34a",
-    error: "#dc2626",
-    icon: "#15803d",
-    tabActive: "#15803d",
-    tabInactive: "#9ca3af",
-    gradient: ["#22c55e", "#22c55e"] as const,
+    primary: "#0B0B8C", // Deep royal blue from logo
+    secondary: "#E1064A", // Vibrant magenta-red
+    accent: "#5B21B6", // Purple transition tone
+    background: "#F5F7FA", // Clean light background
+    surface: "#FFFFFF", // Cards/Modals
+    text: "#111827", // Dark neutral text
+    onPrimary: "#FFFFFF",
+    textMuted: "#6B7280",
+    border: "#D6DAF5",
+    inputBorder: "#A5B4FC",
+
+    success: "#22C55E",
+    error: "#EF4444",
+
+    icon: "#0B0B8C",
+
+    tabActive: "#E1064A",
+    tabInactive: "#9CA3AF",
+
+    gradient: ["#FF0000", "#0B0B8C"] as const,
   },
 
   dark: {
-    primary: "#22c55e", // Bright green for contrast
-    secondary: "#1e723d",
-    accent: "#86efac",
-    background: "#052e16", // Dark green background
-    surface: "#454c48", // Elevated surface
-    text: "#f0fdf4", // Soft white
-    textMuted: "#bbf7d0",
-    border: "#166534",
-    inputBorder: "#15803d",
-    success: "#4ade80",
-    error: "#f87171",
-    icon: "#86efac",
-    tabActive: "#f0fdf4",
-    tabInactive: "#6ee7b7",
-    gradient: ["#22c55e", "#22c55e"] as const,
+    primary: "#3B4DFF", // Brightened blue for dark mode
+    secondary: "#FF2E63", // Neon magenta-red
+    accent: "#8B5CF6", // Soft purple glow
+
+    background: "#090935", // Deep navy background
+    surface: "#15153F", // Elevated dark surface
+
+    text: "#FFFFFF",
+    onPrimary: "#FFFFFF",
+
+    textMuted: "#C7C9D1",
+
+    border: "#312E81",
+    inputBorder: "#4338CA",
+
+    success: "#4ADE80",
+    error: "#F87171",
+
+    icon: "#FFFFFF",
+
+    tabActive: "#FF2E63",
+    tabInactive: "#818CF8",
+
+    gradient: ["#FF0000", "#0B0B8C"] as const,
   },
 };
 

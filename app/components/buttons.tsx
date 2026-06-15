@@ -1,13 +1,13 @@
+import { useTheme } from "@/context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
+    ActivityIndicator,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
 } from "react-native";
-import { useTheme } from "../../context/ThemeContext";
 
 import { GestureResponderEvent } from "react-native";
 
@@ -24,7 +24,9 @@ const GradientButton: React.FC<GradientButtonProps> = ({
 }) => {
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
-  return (
+  return loading ? (
+    <ActivityIndicator size="small" color={colors.primary} />
+  ) : (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8} disabled={loading}>
       <LinearGradient
         colors={colors.gradient}
@@ -32,11 +34,7 @@ const GradientButton: React.FC<GradientButtonProps> = ({
         end={{ x: 1, y: 0 }}
         style={styles.button}
       >
-        {loading ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Text style={styles.text}>{title}</Text>
-        )}
+        <Text style={styles.text}>{title}</Text>
       </LinearGradient>
     </TouchableOpacity>
   );
@@ -48,6 +46,7 @@ const styles = StyleSheet.create({
   button: {
     width: "95%",
     paddingVertical: 16,
+    paddingHorizontal: 8,
     marginHorizontal: "auto",
     borderRadius: 15,
     marginTop: 20,

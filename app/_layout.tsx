@@ -1,4 +1,8 @@
-import { DarkTheme, DefaultTheme, ThemeProvider as NavProvider } from "@react-navigation/native";
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider as NavProvider,
+} from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "react-native";
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
@@ -63,7 +67,7 @@ function RootLayoutNav() {
           }}
         />
         <Stack.Screen
-          name="Dashboard"
+          name="dashboard"
           options={{
             headerShown: false,
           }}

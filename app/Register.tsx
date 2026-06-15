@@ -15,8 +15,9 @@ import Modal from "react-native-modal";
 
 import { Ionicons } from "@expo/vector-icons";
 
-import { AppLogo } from "@/constants/logo";
+import { AppLogo } from "@/constants/images";
 import { styles } from "@/constants/styles";
+import { endPoints } from "@/constants/urls";
 import { router } from "expo-router";
 import nigeria from "../assets/json/nigeria.json"; // adjust path
 import { useTheme } from "../context/ThemeContext";
@@ -88,7 +89,7 @@ const Register = () => {
     };
 
     try {
-      const response = await fetch("https://api.rahausub.com.ng/register.php", {
+      const response = await fetch(endPoints.register, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -143,7 +144,7 @@ const Register = () => {
           <Text
             style={{
               marginTop: 0,
-              color: colors.primary,
+              color: colors.text,
               fontSize: 27,
               fontWeight: "bold",
               textAlign: "center",
@@ -358,8 +359,9 @@ const Register = () => {
             style={{
               fontSize: 16,
               textAlign: "center",
-              marginTop: 20,
-              color: colors.primary,
+              marginTop: 10,
+              marginBottom: 30,
+              color: colors.text,
             }}
           >
             Already Have an Account?
