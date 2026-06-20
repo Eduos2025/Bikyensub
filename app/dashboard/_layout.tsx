@@ -4,7 +4,6 @@ import { AppState, AppStateStatus } from "react-native";
 import LockOverlay from "../components/LockOverlay";
 import { usePushNotifications } from "../hooks/push-notification";
 import useUserStore from "../states/user";
-import { testPushNotification } from "../utils/test-push-notification";
 
 export default function DashboardLayout() {
   const [isLocked, setIsLocked] = useState(false);
@@ -13,11 +12,9 @@ export default function DashboardLayout() {
 
   const token = useUserStore((s) => s.user?.token) || "";
 
-  console.log(token);
-
   usePushNotifications(token);
 
-  testPushNotification("ExponentPushToken[yZgXysM_EcUk44f8LJR6o6]");
+  // testPushNotification("ExponentPushToken[yZgXysM_EcUk44f8LJR6o6]");
 
   useEffect(() => {
     const subscription = AppState.addEventListener(

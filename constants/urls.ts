@@ -1,4 +1,4 @@
-export const baseUrl = "https://api.rahausub.com.ng";
+export const baseUrl = "https://api.bikyensub.com.ng";
 
 export const endPoints = {
   login: `${baseUrl}/api.php?action=login`,

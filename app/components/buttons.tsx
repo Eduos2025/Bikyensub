@@ -2,11 +2,11 @@ import { useTheme } from "@/context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import {
-    ActivityIndicator,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
 } from "react-native";
 
 import { GestureResponderEvent } from "react-native";

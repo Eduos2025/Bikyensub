@@ -115,24 +115,6 @@ const IdentityVerification = () => {
             </Text>
           </View>
 
-          {/* Full Name */}
-          {/* <View style={styles.formGroup}>
-                <Text style={styles.label}>Full Name</Text>
-
-                <TextInput
-                  placeholder={user?.name ?? "Full Name"}
-                  placeholderTextColor={colors.textMuted}
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: colors.background,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                />
-              </View> */}
-
-          {/* Identity Type */}
           <View style={styles.formGroup}>
             <Text style={styles.label}>Select Identity Type</Text>
 
@@ -149,7 +131,7 @@ const IdentityVerification = () => {
                 <Text
                   style={[
                     styles.identityText,
-                    { color: isBVN ? colors.surface : undefined },
+                    // { color: isBVN ? colors.surface : undefined },
                   ]}
                 >
                   BVN
@@ -168,7 +150,7 @@ const IdentityVerification = () => {
                 <Text
                   style={[
                     styles.identityText,
-                    { color: !isBVN ? colors.surface : undefined },
+                    // { color: !isBVN ? colors.surface : undefined },
                   ]}
                 >
                   NIN
@@ -268,7 +250,6 @@ const styles = StyleSheet.create({
 
   infoText: {
     flex: 1,
-    color: "#FFFFFF",
     fontSize: 13,
     lineHeight: 20,
     fontWeight: "500",
