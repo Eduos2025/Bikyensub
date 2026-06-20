@@ -58,10 +58,10 @@ export default function Index() {
         <View style={styles.LogoImg}>
           <Image source={AppLogo} style={styles.LogoImgB} />
         </View>
-
+        {/* 
         <Text style={[styles.titleText, styles.welB, { color: colors.text }]}>
           Fast. Simple. Reliable.
-        </Text>
+        </Text> */}
       </View>
 
       <View style={{ marginBottom: 50 }}>

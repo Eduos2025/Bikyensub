@@ -1,13 +1,13 @@
-import AlertModal from "@/app/components/AlertModal";
-import Header from "@/app/components/header";
 import { endPoints } from "@/constants/urls";
-import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import * as LocalAuthentication from "expo-local-authentication";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
+
+import { networks } from "@/constants/networks";
+import { beneficiaryType } from "@/constants/types";
 import {
   ActivityIndicator,
   Image,
@@ -24,54 +24,15 @@ import {
 } from "react-native";
 import Modal from "react-native-modal";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "@/context/ThemeContext";
+import AlertModal from "@/app/components/AlertModal";
+import useUserStore from "@/app/states/user";
+import { detectNetworkUtil } from "@/app/utils/detect-network";
+import { fetchAllDataPlans, fetchPlansByType } from "@/app/utils/fetch-data-plans";
+import { getDataTypes } from "@/app/utils/get-data-types";
+import { pickContact } from "@/app/utils/pick-contact";
+import { Header } from "@react-navigation/elements";
 
-const networks = [
-  { id: "mtn", label: "MTN", logo: require("@/assets/images/mtn.png") },
-  {
-    id: "airtel",
-    label: "Airtel",
-    logo: require("@/assets/images/airtel.png"),
-  },
-  { id: "glo", label: "Glo", logo: require("@/assets/images/glo.png") },
-  {
-    id: "etisalat",
-    label: "9mobile",
-    logo: require("@/assets/images/9mobile.png"),
-  },
-];
-
-const mapNetworkFromAPI = (apiNetwork: any): string | null => {
-  if (typeof apiNetwork === "string") {
-    const networkMap: { [key: string]: string } = {
-      "mtn nigeria": "mtn",
-      "airtel nigeria": "airtel",
-      "glo nigeria": "glo",
-      "9mobile nigeria": "etisalat",
-      "etisalat nigeria": "etisalat",
-      "t2 mobile nigeria": "etisalat",
-      "9mobile": "etisalat",
-      etisalat: "etisalat",
-    };
-    const key = apiNetwork.toLowerCase().trim();
-    return networkMap[key] || null;
-  }
-
-  // If it's an object with id property
-  if (apiNetwork && typeof apiNetwork === "object" && apiNetwork.id) {
-    const idMap: { [key: string]: string } = {
-      mtn: "mtn",
-      airtel: "airtel",
-      glo: "glo",
-      "9mobile": "etisalat",
-      etisalat: "etisalat",
-      "t2 mobile": "etisalat",
-    };
-    const id = String(apiNetwork.id).toLowerCase().trim();
-    return idMap[id] || null;
-  }
-
-  return null;
-};
 
 const cleanDataPlanName = (name: string): string => {
   if (!name) return "";
@@ -109,14 +70,14 @@ const DataPage = () => {
   const [alertTitle, setAlertTitle] = useState("");
   const [alertMessage, setAlertMessage] = useState("");
 
-  const [balance, setBalance] = useState(0);
-  const [loadingBalance, setLoadingBalance] = useState(true);
-  const [email, setEmail] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [manualListing, setManualListing] = useState(false);
   const [dataTypes, setDataTypes] = useState<any[]>([{ name: "DATA BUNDLE" }]);
   const [fetchingTypes, setFetchingTypes] = useState(false);
+
+  const balance = useUserStore((s) => s.user?.walletBalance) || 0;
+
+  const beneficiaries = useUserStore((s) => s.beneficiaries) || [];
 
   const resetForm = () => {
     setSelectedNetwork(null);
@@ -145,35 +106,12 @@ const DataPage = () => {
   const fetchDataTypes = async (networkId: string) => {
     try {
       setFetchingTypes(true);
-      const userToken = await AsyncStorage.getItem("userToken");
-      if (!userToken) return;
 
-      const response = await fetch(endPoints.getDataTypes, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: userToken,
-          serviceID: `${networkId}-data`,
-        }),
-      });
+      const data = await getDataTypes(networkId);
+      if (data.error) return;
 
-      const text = await response.text();
-      try {
-        const data = JSON.parse(text);
-        if (data.success && data.types) {
-          // Prepend "Data Bundle" as it's the standard type
-          const formattedTypes = [
-            { name: "DATA BUNDLE" },
-            ...data.types.map((t: any) => ({
-              name: t.name || t,
-              id: t.id,
-              plan_id: t.plan_id || t.id, // Support different ID aliases
-            })),
-          ];
-          setDataTypes(formattedTypes);
-        }
-      } catch (e) {
-        console.error("Failed to parse JSON response:", text);
+      if (data.success) {
+        setDataTypes(data.data);
       }
     } catch (error) {
       console.error("Fetch data types error:", error);
@@ -186,67 +124,31 @@ const DataPage = () => {
     const params = buildReceiptParams();
     resetForm();
     router.replace({
-      pathname: success
-        ? "/dashboard/data/data-success"
-        : "/dashboard/data/data-failed",
+      pathname: success ? "/dashboard/data/data-success" : "/dashboard/data/data-failed",
       params: params,
     });
-  };
-
-  const getBalance = async (isRefresh = false) => {
-    try {
-      if (!isRefresh) setLoadingBalance(true);
-      const userToken = await AsyncStorage.getItem("userToken");
-      if (!userToken) return;
-
-      const response = await fetch(endPoints.getBalance, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: userToken }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setBalance(Number(data.balance) || 0);
-        setEmail(data.email || "");
-      }
-    } catch (error) {
-      console.error("Fetch balance error:", error);
-    } finally {
-      setLoadingBalance(false);
-      setRefreshing(false);
-    }
   };
 
   const fetchDataPlans = async (networkId: string, typeObj: any) => {
     try {
       setFetchingPlans(true);
-      let response;
+
+      let plans = [];
 
       if (!typeObj || typeObj.name === "DATA BUNDLE") {
-        const url = `${endPoints.getDataPlans}?network=${networkId}-data`;
-        response = await fetch(url);
+        const res = await fetchAllDataPlans(networkId);
+
+        if (res.error) return;
+
+        plans = res.data;
       } else {
-        // Fetch from getOtherData.php for dynamic types
-        const userToken = await AsyncStorage.getItem("userToken");
-        response = await fetch(endPoints.getOtherData, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            token: userToken,
-            plan_id: typeObj.id,
-          }),
-        });
+        const res = await fetchPlansByType(typeObj.id);
+
+        if (res.error) return;
+        plans = res.data;
       }
 
-      const data = await response.json();
-      if (data.success && data.plans) {
-        setPlans(data.plans);
-      } else {
-        setAlertTitle("Plans Error");
-        setAlertMessage(data.message || "Failed to fetch data plans.");
-        setAlertVisible(true);
-      }
+      setPlans(plans);
     } catch (error) {
       console.error("Fetch plans error:", error);
       setAlertTitle("Error");
@@ -257,13 +159,8 @@ const DataPage = () => {
     }
   };
 
-  useEffect(() => {
-    getBalance();
-  }, []);
-
   useFocusEffect(
     useCallback(() => {
-      getBalance(true);
       const loadFinger = async () => {
         try {
           const storedFinger = await AsyncStorage.getItem("finger");
@@ -276,48 +173,39 @@ const DataPage = () => {
     }, []),
   );
 
+  //fetch contact from phone
+
+  const getContactFromPhone = async () => {
+    const phone = await pickContact();
+
+    if (!phone) return;
+
+    setPhoneNumber(phone);
+
+    handlePhoneChange(phone);
+  };
+
   // Detect Network Function
+
   const detectNetwork = async (phone: string) => {
     try {
-      const res = await fetch(endPoints.detectNetwork, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ phone }),
-      });
+      const detected = await detectNetworkUtil(phone);
+      if (!detected) {
+        setManualListing(true);
+        setAlertTitle("Detection Failed");
+        setAlertMessage("Unable to detect network.");
+        setAlertVisible(true);
+        return;
+      }
 
-      const data = await res.json();
-      console.log("Detect Network Response:", data);
-
-      if (data.network || data.raw) {
-        const networkId = mapNetworkFromAPI(data.network || data.raw);
-
-        if (networkId) {
-          const detected = networks.find((net) => net.id === networkId);
-
-          if (detected) {
-            setSelectedNetwork(detected);
-            setManualListing(false);
-            fetchDataTypes(detected.id);
-          } else {
-            setManualListing(true);
-            setAlertTitle("Detection Failed");
-            setAlertMessage("Unable to find network. Please select manually.");
-            setAlertVisible(true);
-          }
-        } else {
-          setManualListing(true);
-          setAlertTitle("Detection Failed");
-          setAlertMessage(
-            "Network format not recognized. Please select manually.",
-          );
-          setAlertVisible(true);
-        }
+      if (detected) {
+        setSelectedNetwork(detected);
+        setManualListing(false);
+        fetchDataTypes(detected.id);
       } else {
         setManualListing(true);
         setAlertTitle("Detection Failed");
-        setAlertMessage(data.message || "Unable to detect network.");
+        setAlertMessage("Unable to find network. Please select manually.");
         setAlertVisible(true);
       }
     } catch (err) {
@@ -417,7 +305,13 @@ const DataPage = () => {
       if (data.success) {
         setPinVisible(false);
         goToResult(true);
-        getBalance(true);
+
+        const beneficiary: beneficiaryType = {
+          network: selectedNetwork!,
+          phone: phoneNumber,
+        };
+
+        useUserStore.getState().updateBeneficiaries(beneficiary);
       } else {
         setAlertTitle("Failed");
         setAlertMessage(data.message || "Transaction failed");
@@ -472,9 +366,16 @@ const DataPage = () => {
 
       const data = await response.json();
       if (data.success) {
+        useUserStore.getState().refreshDashboard();
         setPinVisible(false);
         goToResult(true);
-        getBalance(true);
+
+        const beneficiary: beneficiaryType = {
+          network: selectedNetwork!,
+          phone: phoneNumber,
+        };
+
+        useUserStore.getState().updateBeneficiaries(beneficiary);
       } else {
         setPin("");
         setAlertTitle("Failed");
@@ -497,7 +398,7 @@ const DataPage = () => {
         { marginTop: -30, backgroundColor: colors.background },
       ]}
     >
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <StatusBar barStyle={"light-content"} />
       <KeyboardAvoidingView
         style={[styles.container, { backgroundColor: colors.background }]}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -508,6 +409,38 @@ const DataPage = () => {
           showsVerticalScrollIndicator={false}
         >
           <Header title="Buy Data" />
+
+          {beneficiaries.length > 0 && (
+            <View style={{ padding: 16 }}>
+              <Text style={{ fontWeight: "700", marginBottom: 16 }}>
+                Recent Beneficiaries
+              </Text>
+              <View style={{ flexDirection: "row", gap: 16 }}>
+                {beneficiaries.map((beneficiary) => (
+                  <TouchableOpacity
+                    key={beneficiary.phone}
+                    style={{
+                      gap: 5,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                    onPress={() => {
+                      handlePhoneChange(beneficiary.phone);
+                      setPhoneNumber(beneficiary.phone);
+                    }}
+                  >
+                    <Image
+                      source={beneficiary.network.logo}
+                      style={styles.networkLogo}
+                    />
+                    <Text style={{ color: colors.textMuted }}>
+                      {beneficiary.phone}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
           <View style={styles.content}>
             <Text style={[styles.inputLabel, { color: colors.text }]}>
               Customer Phone Number
@@ -547,7 +480,18 @@ const DataPage = () => {
                     color={colors.textMuted}
                   />
                 </TouchableOpacity>
-              ) : null}
+              ) : (
+                <TouchableOpacity
+                  onPress={getContactFromPhone}
+                  style={{ margin: 8 }}
+                >
+                  <Ionicons
+                    name="person-circle-outline"
+                    size={32}
+                    color={colors.primary}
+                  />
+                </TouchableOpacity>
+              )}
             </View>
 
             {(selectedNetwork || manualListing) && (

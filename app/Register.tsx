@@ -15,17 +15,18 @@ import Modal from "react-native-modal";
 
 import { Ionicons } from "@expo/vector-icons";
 
-import { AppLogo } from "@/constants/images";
 import { styles } from "@/constants/styles";
-import { endPoints } from "@/constants/urls";
 import { router } from "expo-router";
 import nigeria from "../assets/json/nigeria.json"; // adjust path
 import { useTheme } from "../context/ThemeContext";
 import AlertModal from "./components/AlertModal";
 import GradientButton from "./components/buttons";
+import { register } from "./utils/register";
+import { AppLogo } from "@/constants/images";
+
 
 const Register = () => {
-  const { isDark, colors } = useTheme();
+  const { colors } = useTheme();
   const [stateModalVisible, setStateModalVisible] = useState(false);
 
   const [selectedState, setSelectedState] = useState<string | null>(null);
@@ -55,6 +56,8 @@ const Register = () => {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+
+  const [referralCode, setReferralCode] = useState<string | undefined>();
 
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertTitle, setAlertTitle] = useState("");
@@ -86,37 +89,32 @@ const Register = () => {
       phone: phone,
       state: selectedState,
       password: password,
+      referal: referralCode,
     };
 
     try {
-      const response = await fetch(endPoints.register, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
+      const res = await register(data);
 
-      const json = await response.json();
+      if (res.statusCode == "500") {
+        setAlertTitle("Registration Failed");
+        setAlertMessage("Internal server error");
+        setAlertVisible(true);
+        return;
+      }
 
-      if (json.success) {
+      if (res.error) {
+        setAlertTitle("Registration Failed");
+        setAlertMessage(res.message);
+        setAlertVisible(true);
+        return;
+      }
+
+      if (res.success) {
         setisLoading(false);
         setAlertTitle("Success");
-        setAlertMessage(json.message);
+        setAlertMessage("Registeration successful");
         setAlertVisible(true);
         router.push("/Login");
-      } else {
-        setisLoading(false);
-        if (json.errors) {
-          // const allErrors = Object.values(json.errors).flat().join('\n');
-          setAlertTitle("Registration Failed");
-          setAlertMessage(json.message);
-          setAlertVisible(true);
-        } else {
-          setAlertTitle("Registration Failed");
-          setAlertMessage(json.message);
-          setAlertVisible(true);
-        }
       }
     } catch (err) {
       setisLoading(false);
@@ -124,6 +122,8 @@ const Register = () => {
       setAlertTitle("Error");
       setAlertMessage("Something went wrong. Please try again.");
       setAlertVisible(true);
+    } finally {
+      setisLoading(false);
     }
   };
 
@@ -180,7 +180,7 @@ const Register = () => {
             placeholderTextColor={colors.textMuted}
             style={{
               height: 50,
-              borderColor: colors.inputBorder,
+              borderColor: colors.border,
               borderWidth: 1,
               borderRadius: 8,
               paddingHorizontal: 10,
@@ -211,7 +211,7 @@ const Register = () => {
             placeholderTextColor={colors.textMuted}
             style={{
               height: 50,
-              borderColor: colors.inputBorder,
+              borderColor: colors.border,
               borderWidth: 1,
               borderRadius: 8,
               paddingHorizontal: 10,
@@ -242,7 +242,7 @@ const Register = () => {
             placeholderTextColor={colors.textMuted}
             style={{
               height: 50,
-              borderColor: colors.inputBorder,
+              borderColor: colors.border,
               borderWidth: 1,
               borderRadius: 8,
               paddingHorizontal: 10,
@@ -272,7 +272,7 @@ const Register = () => {
             onPress={() => setStateModalVisible(true)}
             style={{
               height: 50,
-              borderColor: colors.inputBorder,
+              borderColor: colors.border,
               borderWidth: 1,
               borderRadius: 8,
               paddingHorizontal: 10,
@@ -306,7 +306,7 @@ const Register = () => {
           <View
             style={{
               height: 50,
-              borderColor: colors.inputBorder,
+              borderColor: colors.border,
               borderWidth: 1,
               borderRadius: 8,
               paddingHorizontal: 10,
@@ -333,6 +333,35 @@ const Register = () => {
         </View>
         {/* INPUT END */}
 
+        <View>
+          <Text
+            style={{
+              color: colors.textMuted,
+              fontSize: 12,
+              marginBottom: 2,
+              marginLeft: 3,
+            }}
+          >
+            Referral Code (Optional)
+          </Text>
+          <TextInput
+            onChangeText={setReferralCode}
+            keyboardType="numeric"
+            placeholderTextColor={colors.textMuted}
+            style={{
+              height: 50,
+              borderColor: colors.border,
+              borderWidth: 1,
+              borderRadius: 8,
+              paddingHorizontal: 10,
+              justifyContent: "center",
+              marginBottom: 20,
+              color: colors.text,
+              backgroundColor: colors.surface,
+            }}
+          />
+        </View>
+
         <Text
           style={{
             color: colors.textMuted,
@@ -345,7 +374,7 @@ const Register = () => {
         </Text>
 
         <GradientButton
-          title="Get Started"
+          title="Register"
           loading={isLoading}
           onPress={handleRegister}
         />

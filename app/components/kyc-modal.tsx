@@ -1,10 +1,10 @@
-import { User } from "@/constants/types";
 import { endPoints } from "@/constants/urls";
 import { useTheme } from "@/context/ThemeContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useState } from "react";
 import {
-  Modal,
+  KeyboardAvoidingView,
+  Platform,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -12,21 +12,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import useUserStore from "../states/user";
+import { generateAccount } from "../utils/generate-account";
 import AlertModal from "./AlertModal";
 import GradientButton from "./buttons";
 
-const IdentityVerificationModal = ({
-  visible = true,
-  onClose,
-  user,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  user: User | null;
-}) => {
+const IdentityVerification = () => {
   const { isDark, colors } = useTheme();
   const [isBVN, setIsBVN] = useState(true);
   const [nin, setNIN] = useState("");
@@ -70,32 +62,28 @@ const IdentityVerificationModal = ({
       if (data.status !== "success") {
         setAlertVisible(true);
         setAlertTitle("Failed");
-        setAlertMessage(data.data.message);
+        setAlertMessage(data.message);
         setButtonTitle("Proceed");
-        onClose();
+        return;
       }
-
-      console.log(data);
 
       setButtonTitle("Generating account...");
 
-      const res = await getAccountDetails();
+      const res = await generateAccount();
 
-      if (res.status === "error") {
+      if (!res) {
         setAlertVisible(true);
         setAlertTitle("Failed");
-        setAlertMessage(res.message);
+        setAlertMessage("Something went wrong");
         setButtonTitle("Proceed");
-        onClose();
+
         return;
       }
 
       await useUserStore.getState().refreshDashboard();
       setAlertVisible(true);
       setAlertTitle("Successful");
-      setAlertMessage("Account generated successfully");
-
-      onClose();
+      setAlertMessage("Generating account, It might take a few minutes");
     } catch (error) {
       console.error("Account fetch error:", error);
     } finally {
@@ -104,76 +92,32 @@ const IdentityVerificationModal = ({
     }
   };
 
-  const getAccountDetails = async () => {
-    try {
-      const userToken = await AsyncStorage.getItem("userToken");
-
-      if (!userToken) return;
-
-      const response = await fetch(endPoints.getAccountDetails, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token: userToken }),
-      });
-
-      const data = await response.json();
-
-      return data;
-    } catch (error) {
-      console.error("Account fetch error:", error);
-    }
-  };
-
   return (
-    <SafeAreaView style={styles.container}>
-      <Modal transparent animationType="slide" visible={visible}>
-        <KeyboardAwareScrollView
-          enableOnAndroid
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ flexGrow: 1 }}
-        >
-          <View style={styles.overlay}>
-            <View
-              style={[
-                styles.modalContainer,
-                {
-                  backgroundColor: "#3a3838",
-                },
-              ]}
-            >
-              {/* Header */}
-              <View style={styles.header}>
-                <Text style={styles.headerTitle}>Identity Verification</Text>
+    <SafeAreaView>
+      <KeyboardAvoidingView
+        style={[{ backgroundColor: colors.background }]}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <View style={{ padding: 32 }}>
+          {/* Info Box */}
+          <View style={[styles.infoBox, { backgroundColor: colors.accent }]}>
+            <View style={styles.infoIcon}>
+              <Ionicons
+                name="information-circle-outline"
+                size={22}
+                color={colors.surface}
+              />
+            </View>
 
-                <TouchableOpacity onPress={onClose}>
-                  <Ionicons name="close" size={24} color="#fff" />
-                </TouchableOpacity>
-              </View>
+            <Text style={styles.infoText}>
+              Please provide valid information. Note that information
+              verification is limited to 3 attempts per day. Continuous attempts
+              with invalid information may result in your account being blocked.
+            </Text>
+          </View>
 
-              {/* Info Box */}
-              <View
-                style={[styles.infoBox, { backgroundColor: colors.accent }]}
-              >
-                <View style={styles.infoIcon}>
-                  <Ionicons
-                    name="information-circle-outline"
-                    size={22}
-                    color={colors.onPrimary}
-                  />
-                </View>
-
-                <Text style={styles.infoText}>
-                  Please provide valid information. Note that information
-                  verification is limited to 3 attempts per day. Continuous
-                  attempts with invalid information may result in your account
-                  being blocked.
-                </Text>
-              </View>
-
-              {/* Full Name */}
-              {/* <View style={styles.formGroup}>
+          {/* Full Name */}
+          {/* <View style={styles.formGroup}>
                 <Text style={styles.label}>Full Name</Text>
 
                 <TextInput
@@ -189,68 +133,74 @@ const IdentityVerificationModal = ({
                 />
               </View> */}
 
-              {/* Identity Type */}
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Select Identity Type</Text>
+          {/* Identity Type */}
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Select Identity Type</Text>
 
-                <View style={styles.identityRow}>
-                  <TouchableOpacity
-                    style={[
-                      styles.identityButton,
-                      { backgroundColor: isBVN ? colors.accent : undefined },
-                    ]}
-                    onPress={() => {
-                      setIsBVN(true);
-                    }}
-                  >
-                    <Text
-                      style={[styles.identityText, { color: colors.onPrimary }]}
-                    >
-                      BVN
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.identityButton,
-                      { backgroundColor: !isBVN ? colors.accent : undefined },
-                    ]}
-                    onPress={() => {
-                      setIsBVN(false);
-                    }}
-                  >
-                    <Text
-                      style={[styles.identityText, { color: colors.onPrimary }]}
-                    >
-                      NIN
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Identity Number */}
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Identity Number</Text>
-
-                <TextInput
-                  placeholder="Identity Number"
-                  placeholderTextColor={colors.textMuted}
+            <View style={styles.identityRow}>
+              <TouchableOpacity
+                style={[
+                  styles.identityButton,
+                  { backgroundColor: isBVN ? colors.accent : undefined },
+                ]}
+                onPress={() => {
+                  setIsBVN(true);
+                }}
+              >
+                <Text
                   style={[
-                    styles.input,
-                    {
-                      backgroundColor: colors.background,
-                      borderColor: colors.border,
-                    },
+                    styles.identityText,
+                    { color: isBVN ? colors.surface : undefined },
                   ]}
-                  keyboardType="numeric"
-                  onChangeText={(val) => {
-                    isBVN ? setBVN(val) : setNIN(val);
-                  }}
-                />
-              </View>
+                >
+                  BVN
+                </Text>
+              </TouchableOpacity>
 
-              {/* Date of Birth */}
-              {/* <View style={styles.formGroup}>
+              <TouchableOpacity
+                style={[
+                  styles.identityButton,
+                  { backgroundColor: !isBVN ? colors.accent : undefined },
+                ]}
+                onPress={() => {
+                  setIsBVN(false);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.identityText,
+                    { color: !isBVN ? colors.surface : undefined },
+                  ]}
+                >
+                  NIN
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Identity Number */}
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Identity Number</Text>
+
+            <TextInput
+              placeholder="Identity Number"
+              placeholderTextColor={colors.textMuted}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                },
+              ]}
+              keyboardType="numeric"
+              onChangeText={(val) => {
+                isBVN ? setBVN(val) : setNIN(val);
+              }}
+            />
+          </View>
+
+          {/* Date of Birth */}
+          {/* <View style={styles.formGroup}>
               <Text style={styles.label}>Date of birth</Text>
 
               <TextInput
@@ -260,44 +210,38 @@ const IdentityVerificationModal = ({
               />
             </View> */}
 
-              {/* Proceed Button */}
+          {/* Proceed Button */}
 
-              <GradientButton title={buttonTitle} onPress={submit} />
-            </View>
-          </View>
-        </KeyboardAwareScrollView>
-      </Modal>
-      <AlertModal
-        isVisible={alertVisible}
-        title={alertTitle}
-        message={alertMessage}
-        onClose={() => setAlertVisible(false)}
-      />
+          <GradientButton title={buttonTitle} onPress={submit} />
+        </View>
+
+        <AlertModal
+          isVisible={alertVisible}
+          title={alertTitle}
+          message={alertMessage}
+          onClose={() => setAlertVisible(false)}
+        />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
-export default IdentityVerificationModal;
+export default IdentityVerification;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
 
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "flex-end",
-  },
-
   modalContainer: {
+    backgroundColor: "#3a3838",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 22,
     paddingTop: 22,
     paddingBottom: 30,
+    marginTop: "auto",
   },
-
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -308,7 +252,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#ffffff",
   },
 
   infoBox: {
@@ -340,7 +283,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#ffffff",
+
     marginBottom: 10,
   },
 

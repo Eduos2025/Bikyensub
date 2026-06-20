@@ -9,7 +9,6 @@ export const verifyToken = async (token: string): Promise<boolean> => {
   });
 
   const json = await response.json();
-  console.log(json);
 
   return json.status === "success";
 };

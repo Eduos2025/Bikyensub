@@ -11,7 +11,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../context/ThemeContext";
@@ -107,10 +107,19 @@ const ForgotPassword = () => {
           showsVerticalScrollIndicator={false}
         >
           <View style={{ marginTop: 20, marginBottom: 40 }}>
-            <Image
-              source={AppLogo}
-              style={{ width: 150, height: 30, alignSelf: "center" }}
-            />
+            <View
+              style={{
+                justifyContent: "center",
+                alignItems: "center",
+                marginVertical: 20,
+              }}
+            >
+              <Image
+                source={AppLogo}
+                style={{ width: 150, height: 150, borderRadius: 10 }}
+                resizeMode="contain"
+              />
+            </View>
             <Text
               style={{
                 marginTop: 30,

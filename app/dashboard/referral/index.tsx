@@ -1,0 +1,192 @@
+import { APPNAME } from "@/constants/variables";
+import { useTheme } from "@/context/ThemeContext";
+import React from "react";
+import {
+  ActivityIndicator,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import Header from "../../components/header";
+import useUserStore from "../../states/user";
+import ReferralStatsScreen from "./referral-stats";
+
+export default function ReferralScreen() {
+  const { colors } = useTheme();
+
+  const user = useUserStore((state) => state.user);
+
+  return (
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Card */}
+        <Header title="Referral" />
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.surface,
+              shadowColor: colors.text,
+              marginHorizontal: 20,
+            },
+          ]}
+        >
+          {/* Illustration */}
+          <View style={styles.imageContainer}>
+            <Image
+              source={{
+                uri: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
+              }}
+              resizeMode="contain"
+              style={styles.image}
+            />
+          </View>
+
+          {/* Title */}
+          <Text style={[styles.title, { color: colors.text }]}>
+            Refer friends and Earn instantly
+          </Text>
+
+          {/* Subtitle */}
+          <Text style={[styles.description, { color: colors.textMuted }]}>
+            Invite friends to {APPNAME} and earn on each referral.
+          </Text>
+        </View>
+        {user ? (
+          <ReferralStatsScreen
+            referralData={{
+              total_referred: user!.totalReferrals,
+              total_earnings: user!.referralEarnings,
+              share_message: user!.shareMessage,
+              referred_users: user!.referredUsers,
+              referral_link: user!.referralLink,
+              referral_code: user!.referralCode,
+            }}
+          />
+        ) : (
+          <ActivityIndicator />
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F6F6F6",
+  },
+
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 15,
+    marginBottom: 25,
+  },
+
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#000",
+  },
+
+  card: {
+    borderRadius: 24,
+    marginBottom: 24,
+
+    padding: 16,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+
+  imageContainer: {
+    height: 120,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+
+  image: {
+    width: 100,
+    height: 100,
+  },
+
+  title: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#000",
+    textAlign: "center",
+    marginTop: 25,
+    lineHeight: 30,
+  },
+
+  description: {
+    fontSize: 17,
+    color: "#444",
+    textAlign: "center",
+    marginTop: 12,
+    lineHeight: 26,
+  },
+
+  codeContainer: {
+    marginTop: 30,
+    height: 64,
+    borderWidth: 1,
+    borderColor: "#E2E2E2",
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+
+  codeText: {
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+
+  shareButton: {
+    marginTop: 20,
+    height: 62,
+    borderRadius: 16,
+    backgroundColor: "#3561E7",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    shadowColor: "#3561E7",
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    elevation: 5,
+  },
+
+  shareText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+
+  historyText: {
+    textAlign: "center",
+    marginTop: 22,
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#3561E7",
+  },
+});

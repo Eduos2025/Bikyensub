@@ -1,10 +1,13 @@
 import AlertModal from "@/app/components/AlertModal";
-import Header from "@/app/components/header";
-import { endPoints } from "@/constants/urls";
+import useUserStore from "@/app/states/user";
+import { checkFingerprintAvailabe } from "@/app/utils/check-fingerprint-available";
+import { login } from "@/app/utils/login";
+import { toggleFingerprint } from "@/app/utils/toggle-fingerprint";
+import { updatePassword } from "@/app/utils/update-password";
 import { useTheme } from "@/context/ThemeContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
+import { Header } from "@react-navigation/elements";
 import * as Haptics from "expo-haptics";
-import * as LocalAuthentication from "expo-local-authentication";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
@@ -26,13 +29,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const Avatar = require("@/assets/images/avater.png");
 
-type User = {
-  id: string;
-  email: string;
-  name: string;
-  phone: string;
-};
-
 const Profile = () => {
   const { isDark, toggleTheme, colors } = useTheme();
   const [nameModal, setNameModal] = React.useState(false);
@@ -45,7 +41,7 @@ const Profile = () => {
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [verificationPassword, setVerificationPassword] = React.useState("");
-  const [isFingerEnabled, setIsFingerEnabled] = useState(false);
+  // const [isFingerEnabled, setIsFingerEnabled] = useState(false);
   const [updatingFinger, setUpdatingFinger] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [pinVerifyModal, setPinVerifyModal] = useState(false);
@@ -55,48 +51,23 @@ const Profile = () => {
   const [alertTitle, setAlertTitle] = useState("");
   const [alertMessage, setAlertMessage] = useState("");
 
-  const [user, setUser] = useState<User | null>(null);
+  const user = useUserStore((state) => state.user);
+  const isFingerEnabled = useUserStore((s) => s.fingerPrintEnabled);
 
   const handleFingerprintToggle = async (value: boolean) => {
     try {
-      // Step 1: Verify identity before changing settings
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: value ? "Enable Fingerprint" : "Disable Fingerprint",
-      });
+      const isAvailable = await checkFingerprintAvailabe();
 
-      if (!result.success) {
-        // Revert toggle state if authentication fails
+      if (!isAvailable) {
+        setAlertTitle("Error");
+        setAlertMessage("Fingerprint is not available on this device");
+        setAlertVisible(true);
         return;
       }
 
       setUpdatingFinger(true);
-      setIsFingerEnabled(value);
-      await AsyncStorage.setItem("finger", value ? "1" : "0");
 
-      const userToken = await AsyncStorage.getItem("userToken");
-      if (userToken) {
-        const response = await fetch(endPoints.fingerPrintSetting, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: userToken }),
-        });
-
-        const data = await response.json();
-
-        // Step 2: Push notification on success
-        if (data.success) {
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: "Security Updated",
-              body: value
-                ? "Fingerprint authentication enabled"
-                : "Fingerprint authentication disabled",
-              sound: true,
-            },
-            trigger: null,
-          });
-        }
-      }
+      await toggleFingerprint(value);
     } catch (error) {
       console.error("Error updating fingerprint setting:", error);
     } finally {
@@ -116,27 +87,6 @@ const Profile = () => {
         shouldShowList: true,
       }),
     });
-  }, []);
-
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const userData = await AsyncStorage.getItem("user");
-        if (userData) {
-          const parsedUser = JSON.parse(userData);
-          setUser(parsedUser);
-          setFullName(parsedUser.name || "");
-          setPhone(parsedUser.phone || "");
-        }
-
-        const fingerSetting = await AsyncStorage.getItem("finger");
-        setIsFingerEnabled(fingerSetting === "1");
-      } catch (error) {
-        console.error("Error loading user data:", error);
-      }
-    };
-
-    loadUser();
   }, []);
 
   const handleUpdatePassword = async () => {
@@ -163,63 +113,31 @@ const Profile = () => {
 
     setIsLoading(true);
     try {
-      // 1️⃣ First Verify Current Password (this will give us a fresh token)
-      const userData = await AsyncStorage.getItem("user");
-      if (!userData) return;
-      const parsedUser = JSON.parse(userData);
+      if (!user) return;
 
-      const loginRes = await fetch(endPoints.login, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: parsedUser.email,
-          password: currentPassword,
-        }),
-      });
+      const res = await updatePassword(user.email, password, currentPassword);
 
-      const loginData = await loginRes.json();
-      if (!loginData.success) {
+      if (!res) {
         setAlertTitle("Verification Failed");
-        setAlertMessage(loginData.message || "Incorrect current password");
+        setAlertMessage("Incorrect current password");
         setAlertVisible(true);
         return;
       }
 
-      // ✅ Update fresh session tokens locally
-      await AsyncStorage.setItem("user", JSON.stringify(loginData.user));
-      await AsyncStorage.setItem("userToken", loginData.token);
-      await AsyncStorage.setItem("finger", loginData.finger);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      // 2️⃣ Now Update to New Password using the FRESH token
-      const response = await fetch(endPoints.setPassword, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: loginData.token,
-          type: "loginPassword",
-          value: password,
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        // Play success vibration
-        await Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        );
-
-        setAlertTitle("Success");
-        setAlertMessage("Password updated successfully");
-        setAlertVisible(true);
-        setPasswordModal(false);
-        setCurrentPassword("");
-        setPassword("");
-        setConfirmPassword("");
-      } else {
-        setAlertTitle("Update Failed");
-        setAlertMessage(data.message || "Unable to update password");
-        setAlertVisible(true);
+      setAlertTitle("Success");
+      setAlertMessage("Password updated successfully");
+      setAlertVisible(true);
+      setPasswordModal(false);
+      setCurrentPassword("");
+      setPassword("");
+      setConfirmPassword("");
+      if (router.canDismiss()) {
+        router.dismissAll();
       }
+      useUserStore.getState().logout();
+      router.replace("/Login");
     } catch (error) {
       setAlertTitle("Error");
       setAlertMessage("Something went wrong. Please try again.");
@@ -234,33 +152,25 @@ const Profile = () => {
 
     setIsLoading(true);
     try {
-      const userData = await AsyncStorage.getItem("user");
-      if (!userData) return;
-      const parsedUser = JSON.parse(userData);
+      if (!user) return;
 
-      const response = await fetch(endPoints.login, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: parsedUser.email,
-          password: verificationPassword,
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        // ✅ CRITICAL: Update storage with new token returned by login.php
-        await AsyncStorage.setItem("user", JSON.stringify(data.user));
-        await AsyncStorage.setItem("userToken", data.token);
-        await AsyncStorage.setItem("finger", data.finger);
+      const res = await login(user.email, password);
+      if (res.success) {
+        setAlertTitle("Success");
+        setAlertMessage("Login successful");
+        setAlertVisible(true);
 
         setPinVerifyModal(false);
         setVerificationPassword("");
         router.push("/dashboard/set-pin");
-      } else {
-        setAlertTitle("Verification Failed");
-        setAlertMessage(data.message || "Incorrect password");
+      }
+
+      if (res.error) {
+        setAlertTitle("Error");
+        setAlertMessage(res.message);
+
         setAlertVisible(true);
+        return;
       }
     } catch (error) {
       setAlertTitle("Error");
@@ -273,8 +183,7 @@ const Profile = () => {
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.multiRemove(["userToken", "user", "finger"]);
-      router.replace("/Login");
+      useUserStore.getState().logout();
     } catch (error) {
       setAlertTitle("Error");
       setAlertMessage("Failed to logout. Please try again.");
@@ -289,7 +198,7 @@ const Profile = () => {
         { marginTop: -30, backgroundColor: colors.background },
       ]}
     >
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <StatusBar barStyle={"light-content"} />
       <KeyboardAvoidingView
         style={[styles.container, { backgroundColor: colors.background }]}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -299,6 +208,7 @@ const Profile = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* HEADER */}
           <Header title="My Profile" />
 
           <View style={styles.content}>
@@ -327,7 +237,7 @@ const Profile = () => {
                   Full Name
                 </Text>
                 <Text style={[styles.infoValue, { color: colors.textMuted }]}>
-                  {fullName}
+                  {user?.name}
                 </Text>
               </View>
             </View>
@@ -359,10 +269,30 @@ const Profile = () => {
                   Phone
                 </Text>
                 <Text style={[styles.infoValue, { color: colors.textMuted }]}>
-                  {phone}
+                  {user?.phone}
                 </Text>
               </View>
             </View>
+            <TouchableOpacity
+              style={[
+                styles.infoCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+              onPress={() => router.push("/dashboard/referral")}
+            >
+              <View style={[styles.infoLeft]}>
+                <View style={[styles.infoLeft]}>
+                  <Text style={[styles.infoLabel, { color: colors.text }]}>
+                    My Referral
+                  </Text>
+                </View>
+                <Text style={[styles.infoValue, { color: colors.textMuted }]}>
+                  Referrals, commissions
+                </Text>
+              </View>
+
+              <Ionicons name="arrow-forward" color={colors.text} />
+            </TouchableOpacity>
 
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Security Settings

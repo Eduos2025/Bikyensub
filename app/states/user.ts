@@ -1,4 +1,4 @@
-import { User } from "@/constants/types";
+import { beneficiaryType, User } from "@/constants/types";
 import { endPoints } from "@/constants/urls";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
@@ -16,12 +16,15 @@ type Transaction = {
 
 type UserStore = {
   user: User | null;
-  transactions: Transaction[];
+  transactions: Array<Transaction>;
+  beneficiaries: Array<beneficiaryType>;
   loading: boolean;
   fingerPrintEnabled: boolean;
   updateBalance: (amount: number) => void;
   logout: () => void;
-
+  setBeneficiaries: (beneficiaries: Array<beneficiaryType>) => Promise<void>;
+  loadBeneficiaries: () => Promise<void>;
+  updateBeneficiaries: (beneficiary: beneficiaryType) => Promise<void>;
   refreshDashboard: () => Promise<void>;
   setFingerPrintStatus: () => Promise<void>;
 };
@@ -39,6 +42,9 @@ const timeRequest = async (label: string, request: Promise<Response>) => {
 const useUserStore = create<UserStore>((set) => ({
   user: null,
   transactions: [],
+  beneficiaries: [
+    // { network: { id: "1", label: "MTN", logo: mtnLogo }, phone: "08105311007" },
+  ],
   loading: false,
   fingerPrintEnabled: false,
   setFingerPrintStatus: async () => {
@@ -49,6 +55,29 @@ const useUserStore = create<UserStore>((set) => ({
     });
   },
 
+  setBeneficiaries: async (beneficiaries: Array<beneficiaryType>) => {
+    await AsyncStorage.setItem("beneficiaries", JSON.stringify(beneficiaries));
+  },
+  loadBeneficiaries: async () => {
+    const rawBeneficiaries = await AsyncStorage.getItem("beneficiaries");
+
+    if (!rawBeneficiaries) return;
+
+    let beneficiaries = JSON.parse(rawBeneficiaries);
+
+    if (beneficiaries.length > 4) {
+      beneficiaries = beneficiaries.slice(0, 3);
+    }
+
+    set({
+      beneficiaries,
+    });
+  },
+  updateBeneficiaries: async (beneficiary: beneficiaryType) => {
+    set((state) => ({
+      beneficiaries: [beneficiary, ...state.beneficiaries, beneficiary],
+    }));
+  },
   refreshDashboard: async () => {
     const start = Date.now();
 
@@ -76,24 +105,24 @@ const useUserStore = create<UserStore>((set) => ({
         timeRequest(
           "Profile",
           fetch(endPoints.profile, {
-            method: "GET",
+            method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-API-Token": token,
+              // "X-API-Token": token,
             },
-            // body: JSON.stringify({ token }),
+            body: JSON.stringify({ token }),
           }),
         ),
 
         timeRequest(
           "Referral",
           fetch(endPoints.getReferralStats, {
-            method: "GET",
+            method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-API-Token": token,
+              // "X-API-Token": token,
             },
-            // body: JSON.stringify({ token }),
+            body: JSON.stringify({ token }),
           }),
         ),
 
@@ -151,7 +180,6 @@ const useUserStore = create<UserStore>((set) => ({
           accNo,
           bankName,
           walletBalance,
-        
 
           referralCode,
           referralLink,
@@ -164,7 +192,7 @@ const useUserStore = create<UserStore>((set) => ({
           state: "",
         },
 
-        transactions: trx.transactions.slice(0, 4).map((item: any) => ({
+        transactions: trx.data.transactions.map((item: any) => ({
           id: item.id.toString(),
           title: item.title,
           subtitle: item.subtitle,
@@ -198,6 +226,7 @@ const useUserStore = create<UserStore>((set) => ({
       router.replace("/Login");
       set({
         user: null,
+        beneficiaries: [],
         transactions: [],
       });
     } catch (error) {

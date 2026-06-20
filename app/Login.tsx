@@ -13,15 +13,16 @@ import {
 import Modal from "react-native-modal";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as LocalAuthentication from "expo-local-authentication";
 
-import { AppLogo } from "@/constants/images";
-import { styles } from "@/constants/styles";
-import { endPoints } from "@/constants/urls";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import AlertModal from "./components/AlertModal";
 import GradientButton from "./components/buttons";
+import { authenticateFingerprint } from "./utils/authenticate-fingerprint";
+import { checkFingerprintAvailabe } from "./utils/check-fingerprint-available";
+import { login, loginWithFingerprint } from "./utils/login";
+import { AppLogo } from "@/constants/images";
+
 
 const Login = () => {
   const { isDark, colors } = useTheme();
@@ -67,89 +68,54 @@ const Login = () => {
   }, []);
 
   const handleFingerprintLogin = async () => {
-    // Check if device supports biometrics
-    const compatible = await LocalAuthentication.hasHardwareAsync();
-    if (!compatible) {
-      alert("Device does not support fingerprint");
-      return;
-    }
-
-    // Authenticate user
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: "Login with Fingerprint",
-    });
-
-    if (result.success) {
-      try {
-        // ✅ Get stored token
-        const token = await AsyncStorage.getItem("userToken");
-
-        if (!token) {
-          alert("No saved login session");
-          return;
-        }
-
-        // ✅ Send token to server
-        const response = await fetch(endPoints.verifyToken, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ token }),
-        });
-
-        const json = await response.json();
-
-        if (json.success) {
-          router.replace("/dashboard");
-        } else {
-          alert("Session expired. Please login again.");
-        }
-      } catch (err) {
-        console.log(err);
-        alert("Error verifying session");
+    try {
+      const isAvailable = await checkFingerprintAvailabe();
+      if (!isAvailable) {
+        alert("Device does not support fingerprint");
+        return;
       }
-    } else {
-      alert("Fingerprint failed");
+
+      const authenticate = await authenticateFingerprint(
+        "Login with Fingerprint",
+      );
+
+      if (!authenticate) {
+        alert("Cancelled");
+        return;
+      }
+      const res = await loginWithFingerprint();
+
+      if (!res) {
+        alert("Fingerprint failed");
+        return;
+      }
+      router.replace("/dashboard");
+    } catch (error) {
+      console.log(error);
+      alert("Server error");
     }
   };
 
   const handleLogin = async () => {
-    if (email.length < 4 || password.length < 4) {
-      setAlertTitle("Validation Error");
-      setAlertMessage("Email and password must be at least 4 characters.");
-      setAlertVisible(true);
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      const response = await fetch(endPoints.login, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      const res = await login(email, password);
 
-      const json = await response.json();
-
-      if (json.success) {
-        // ✅ STORE TOKEN
-        await AsyncStorage.setItem("user", JSON.stringify(json.user));
-        await AsyncStorage.setItem("userToken", json.token);
-        await AsyncStorage.setItem("finger", json.finger);
-
+      if (res.success) {
         setAlertTitle("Success");
-        setAlertMessage(json.message);
+        setAlertMessage("Login successful");
         setAlertVisible(true);
 
         router.replace("/dashboard");
-      } else {
-        setAlertTitle("Login Failed");
-        setAlertMessage(json.message || "Invalid credentials");
+      }
+
+      if (res.error) {
+        setAlertTitle("Error");
+        setAlertMessage(res.message);
+
         setAlertVisible(true);
+        return;
       }
     } catch (err) {
       console.log(err);
@@ -172,12 +138,23 @@ const Login = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={{ marginTop: 40, marginBottom: 50 }}>
-          <View style={[styles.LogoImg, { alignSelf: "center" }]}>
-            <Image source={AppLogo} style={styles.LogoImgB} />
+          <View
+            style={{
+              justifyContent: "center",
+              alignItems: "center",
+              marginVertical: 20,
+            }}
+          >
+            <Image
+              source={AppLogo}
+              style={{ width: 150, height: 150, borderRadius: 10 }}
+              resizeMode="contain"
+            />
           </View>
           <Text
             style={{
-              color: colors.text,
+              marginTop: 30,
+              color: colors.primary,
               fontSize: 27,
               fontWeight: "bold",
               textAlign: "center",
@@ -190,7 +167,6 @@ const Login = () => {
               fontSize: 14,
               color: colors.textMuted,
               textAlign: "center",
-              marginBottom: 30,
             }}
           >
             Welcome back! Kindly enter your details to Login!
@@ -271,7 +247,7 @@ const Login = () => {
             style={{ alignSelf: "flex-end", marginBottom: 20, marginTop: -10 }}
           >
             <Text
-              style={{ color: colors.text, fontSize: 13, fontWeight: "600" }}
+              style={{ color: colors.primary, fontSize: 13, fontWeight: "600" }}
             >
               Forgot Password?
             </Text>
@@ -309,7 +285,7 @@ const Login = () => {
                 marginBottom: 100,
                 textAlign: "center",
                 marginTop: 10,
-                color: colors.text,
+                color: colors.primary,
               }}
             >
               Or Login with Fingerprint
@@ -324,7 +300,7 @@ const Login = () => {
               fontSize: 16,
               textAlign: "center",
               marginTop: 20,
-              color: colors.text,
+              color: colors.primary,
             }}
           >
             Don't Have an Account?
@@ -382,3 +358,6 @@ const Login = () => {
 };
 
 export default Login;
+function fingerprintLogin() {
+  throw new Error("Function not implemented.");
+}

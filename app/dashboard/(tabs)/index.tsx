@@ -1,24 +1,29 @@
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router, useFocusEffect } from "expo-router";
+import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Clipboard,
   Image,
   ImageBackground,
-  KeyboardAvoidingView,
-  Platform,
   RefreshControl,
+  SafeAreaView,
   ScrollView,
   StatusBar,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import TransactionDetailModal from "../../components/TransactionDetailModal";
+
+const services = [
+  { id: "airtime", label: "Airtime", icon: AirtimeIcon },
+  { id: "data", label: "Data", icon: DataIcon },
+  { id: "electricity", label: "Electricity Bills", icon: ElectricityIcon },
+  { id: "exams", label: "Exams Tokens", icon: ExamsIcon },
+  { id: "tv", label: "TV Subscription", icon: TvIcon },
+  { id: "cac", label: "CAC Registration", icon: CacIcon },
+];
 
 // 🔹 Define the transaction type
 type Transaction = {
@@ -32,26 +37,71 @@ type Transaction = {
 
 import * as Haptics from "expo-haptics";
 
-import { services } from "@/constants/features";
-import { AppLogo, CardBg } from "@/constants/images";
-import { styles } from "@/constants/styles";
-import { User } from "@/constants/types";
+import TransactionDetailModal from "@/app/components/TransactionDetailModal";
+import useNotificationStore from "@/app/states/notifications";
+import useUserStore from "@/app/states/user";
+import {
+  AirtimeIcon,
+  AppLogo,
+  avater,
+  CacIcon,
+  CardBg,
+  DataIcon,
+  ElectricityIcon,
+  ExamsIcon,
+  TvIcon,
+} from "@/constants/images";
+import { useTheme } from "@/context/ThemeContext";
 import * as Notifications from "expo-notifications";
-import { useTheme } from "../../../context/ThemeContext";
-import UserCard from "../../components/user-card";
-import { endPoints } from "@/constants/urls";
-import { APPNAME } from "@/constants/variables";
 
+const ServiceButton = React.memo(
+  ({
+    service,
+    colors,
+  }: {
+    service: (typeof services)[number];
+    colors: any;
+  }) => {
+    const navigate = () => {
+      router.push(`/dashboard/${service.id}` as any);
+    };
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.75}
+        style={styles.serviceCard}
+        onPress={navigate}
+      >
+        <View
+          style={[
+            styles.serviceIconWrap,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Image source={service.icon} style={styles.serviceIcon} />
+        </View>
+
+        <Text style={[styles.serviceLabel, { color: colors.text }]}>
+          {service.label}
+        </Text>
+      </TouchableOpacity>
+    );
+  },
+);
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true, // ✅ required in newer versions
+    shouldShowList: true, // ✅ required in newer versions
+  }),
+});
 const Dashboard = () => {
   const { isDark, colors } = useTheme();
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true, // ✅ required in newer versions
-      shouldShowList: true, // ✅ required in newer versions
-    }),
-  });
 
   useEffect(() => {
     Notifications.requestPermissionsAsync();
@@ -68,22 +118,13 @@ const Dashboard = () => {
     });
   };
 
-  const not = async () => {
-    await sendNotification(
-      `Welcome back to ${APPNAME}`,
-      `Get 1 GB as low as ₦250`,
-    );
-  };
-
-  useEffect(() => {
-    not();
-  }, []);
-
   const [refreshing, setRefreshing] = useState(false);
-  const [balance, setBalance] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [email, setEmail] = useState("");
-  const [user, setUser] = useState<User | null>(null);
+
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const transactions = useUserStore((state) => state.transactions);
+  const [selectedTrx, setSelectedTrx] = useState<Transaction | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const triggerVibration = async () => {
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -93,244 +134,217 @@ const Dashboard = () => {
     triggerVibration();
   }, []);
 
-  const [accountNumber, setAccountNumber] = useState("");
-  const [bankName, setBankName] = useState("");
-  const [accountName, setAccountName] = useState("");
+  const user = useUserStore((state) => state.user);
+  const refreshDashboard = useUserStore((state) => state.refreshDashboard);
 
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [selectedTrx, setSelectedTrx] = useState<Transaction | null>(null);
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const loadBeneficiaries = useUserStore((s) => s.loadBeneficiaries);
 
-  const fetchTransactions = async () => {
-    const userToken = await AsyncStorage.getItem("userToken");
-    if (!userToken) return;
+  const unreadCount = useNotificationStore((state) => state.unreadCount);
 
-    try {
-      const response = await fetch(
-        endPoints.getTransactions,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: userToken }),
-        },
-      );
+  const fetchNotifications = useNotificationStore(
+    (state) => state.fetchNotifications,
+  );
 
-      const data = await response.json(); // <-- `data` is defined here
+  const setFingerPrintStatus = useUserStore((s) => s.setFingerPrintStatus);
 
-      if (!data || !data.success) {
-        Alert.alert("Error", data?.message || "Failed to fetch transactions");
-        return;
-      }
-
-      // Map and format transactions for display, limit to 3
-      const formatted: Transaction[] = data.transactions
-        .slice(0, 4) // take only first 3 items
-        .map((trx: any, index: number) => ({
-          id: trx.id.toString(),
-          title: trx.title,
-          subtitle: trx.subtitle,
-          amount: trx.amount,
-          negative: trx.negative,
-          status: trx.status, // include status from API
-          phone: trx.phone, // capture phone
-          date: trx.date, // capture date
-          fullReceipt: trx.fullReceipt, // optional full receipt
-        }));
-
-      setTransactions(formatted);
-    } catch (error) {
-      console.error("Fetch transactions error:", error);
-      Alert.alert("Error", "Network or server error");
-    }
-  };
+  const name = useUserStore((s) => s.user?.name);
+  const walletBalance = useUserStore((s) => s.user?.walletBalance);
+  const accNo = useUserStore((s) => s.user?.accNo);
+  const accName = useUserStore((s) => s.user?.accName);
+  const bankName = useUserStore((s) => s.user?.bankName);
+  const haspin = useUserStore((s) => s.user?.haspin);
 
   useEffect(() => {
-    fetchTransactions();
+    Promise.all([
+      refreshDashboard(),
+      fetchNotifications(),
+      setFingerPrintStatus(),
+      loadBeneficiaries(),
+    ]);
   }, []);
 
-  useEffect(() => {
-    getBalance();
-    getAccountDetails();
-  }, []);
-
-  //Get Account Details Function
-  const getAccountDetails = async () => {
+  const onRefresh = useCallback(async () => {
     try {
-      const userToken = await AsyncStorage.getItem("userToken");
+      setRefreshing(true);
 
-      if (!userToken) return;
-
-      const response = await fetch(
-        endPoints.getAccountDetails,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ token: userToken }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (data.success) {
-        setAccountNumber(data.account_number);
-        setBankName(data.bank_name);
-        setAccountName(data.account_name);
-      } else {
-        console.log("Account Error:", data.message);
-      }
-    } catch (error) {
-      console.error("Account fetch error:", error);
-    }
-  };
-
-  // 🔥 Fetch Balance Function
-  const getBalance = async (isRefresh = false) => {
-    try {
-      if (!isRefresh) setLoading(true);
-
-      const userToken = await AsyncStorage.getItem("userToken");
-
-      if (!userToken) {
-        console.log("No token found");
-        return;
-      }
-
-      const response = await fetch(
-        endPoints.getBalance,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ token: userToken }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (data.success) {
-        setBalance(Number(data.balance) || 0);
-        setEmail(data.email || "");
-      } else {
-        console.log("API Error:", data.message);
-      }
-    } catch (error) {
-      console.error("Fetch balance error:", error);
+      await Promise.all([
+        refreshDashboard(),
+        fetchNotifications(),
+        setFingerPrintStatus(),
+        loadBeneficiaries(),
+      ]);
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
-  };
-
-  // 🚀 Load balance on screen open
-  useEffect(() => {
-    getBalance();
   }, []);
-
-  // 🔄 Pull-to-refresh
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    getBalance(true);
-    fetchTransactions();
-  }, []);
-
-  // 👤 Load user from storage
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const userData = await AsyncStorage.getItem("user");
-        if (userData) {
-          setUser(JSON.parse(userData));
-        }
-      } catch (e) {
-        console.log("User parse error:", e);
-      }
-    };
-
-    loadUser();
-  }, []);
-
   // 🔐 Redirect if no PIN
   useEffect(() => {
-    if (user?.haspin === false) {
+    if (haspin === false) {
       router.replace("/dashboard/set-pin");
     }
   }, [user]);
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchTransactions();
-      getBalance(true);
-    }, []),
-  );
+  // useEffect(() => {
+  //   const not = async () => {
+  //     const userToken = await AsyncStorage.getItem("userToken");
+  //     if (!userToken) return;
+
+  //     const response = await fetch(endPoints.getDataTypes, {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         token: userToken,
+  //         serviceID: `1-data`,
+  //       }),
+  //     });
+
+  //     const data = await response.json();
+  //     console.log(data);
+  //   };
+
+  //   not();
+  // }, []);
 
   return (
     <SafeAreaView
       style={[
         styles.safeArea,
-        { marginTop: -25, backgroundColor: colors.background },
+        {
+          backgroundColor: colors.background,
+        },
       ]}
     >
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <StatusBar
+        barStyle={isDark ? "light-content" : "dark-content"}
+        backgroundColor={colors.background}
+        translucent={false}
+      />
 
-      <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
+        <View style={styles.headerWrap}>
+          <TouchableOpacity
+            style={{
+              alignSelf: "flex-end",
+
+              margin: 8,
+              position: "relative",
+            }}
+            onPress={() => router.push("/dashboard/notifications")}
+          >
+            <Ionicons
+              name="notifications"
+              style={{
+                color: colors.text,
+                fontSize: 32,
+              }}
+            />
+            <View
+              style={{
+                backgroundColor: colors.error,
+                borderRadius: "50%",
+                justifyContent: "center",
+                alignItems: "center",
+                width: 16,
+                height: 16,
+                position: "absolute",
+                right: 0,
+              }}
+            >
+              <Text
+                style={{
+                  color: colors.surface,
+                  fontSize: 10,
+                  fontWeight: "bold",
+                }}
+              >
+                {unreadCount}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <View
+            style={[styles.headerCard, { backgroundColor: colors.secondary }]}
+          >
+            <View style={styles.avatar}>
+              <Image source={avater} style={styles.avatarImage} />
+            </View>
+            <View style={styles.headerTextWrap}>
+              <Text style={[styles.userName, { color: "#ffffff" }]}>
+                {name}
+              </Text>
+              <Text style={[styles.userType, { color: "#e6eeff" }]}>
+                Customer Account
+              </Text>
+            </View>
+            <View style={styles.balanceWrap}>
+              <Text style={[styles.balanceLabel, { color: "#e6eeff" }]}>
+                Balance
+              </Text>
+              <Text style={[styles.balanceValue, { color: "#ffffff" }]}>
+                ₦{walletBalance || 0}
+              </Text>
+            </View>
+          </View>
+        </View>
+        {/* </LinearGradient> */}
+
+        <ImageBackground
+          source={CardBg}
+          style={styles.bankCard}
+          imageStyle={styles.bankCardImage}
         >
           <View
-            style={{
-              paddingTop: 72,
-              paddingBottom: 120,
-              paddingHorizontal: 20,
-              borderBottomRightRadius: 20,
-              borderBottomLeftRadius: 20,
-            }}
+            style={[
+              styles.bankCardOverlay,
+              {
+                backgroundColor: isDark
+                  ? "rgba(15, 23, 42, 0.82)"
+                  : "rgba(255, 255, 255, 0.85)",
+              },
+            ]}
           >
-            <UserCard username={user?.name} colors={colors} balance={balance} />
-          </View>
-
-          <ImageBackground
-            source={CardBg}
-            style={styles.bankCard}
-            imageStyle={styles.bankCardImage}
-          >
-            <View
-              style={[
-                styles.bankCardOverlay,
-                {
-                  backgroundColor: isDark
-                    ? "rgba(15, 23, 42, 0.82)"
-                    : "rgba(255, 255, 255, 0.85)",
-                },
-              ]}
-            >
-              <View style={styles.bankRowTop}>
-                <View>
-                  <Text style={[styles.bankTitle, { color: colors.text }]}>
-                    Bank Details
-                  </Text>
-                  <Text style={[styles.bankSub, { color: colors.textMuted }]}>
-                    To fund your wallet automatically
-                  </Text>
-                  <Text style={[styles.bankSub, { color: colors.textMuted }]}>
-                    Kindly make a bank transfer to this account
-                  </Text>
-                </View>
-                <View
+            <View style={styles.bankRowTop}>
+              <View>
+                <Text style={[styles.bankTitle, { color: colors.text }]}>
+                  Bank Details
+                </Text>
+                {!accName && !accNo ? (
+                  <>
+                    <Text style={[styles.bankSub, { color: colors.textMuted }]}>
+                      Click on fund wallet to generate
+                    </Text>
+                    <Text style={[styles.bankSub, { color: colors.textMuted }]}>
+                      your personal account number
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={[styles.bankSub, { color: colors.textMuted }]}>
+                      To fund your wallet automatically
+                    </Text>
+                    <Text style={[styles.bankSub, { color: colors.textMuted }]}>
+                      Kindly make a bank transfer to this account
+                    </Text>
+                  </>
+                )}
+              </View>
+              {!accNo && (
+                <TouchableOpacity
                   style={[
                     styles.fundButton,
-                    { backgroundColor: colors.accent },
+                    {
+                      backgroundColor: colors.accent,
+                      elevation: 1,
+                    },
                   ]}
+                  onPress={() => router.push("/dashboard/kyc")}
                 >
                   <Text
                     style={[
@@ -340,192 +354,154 @@ const Dashboard = () => {
                   >
                     Fund Wallet
                   </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {accName && accNo && (
+              <>
+                <View style={styles.bankInfoGroup}>
+                  <Text style={[styles.bankLabel, { color: colors.textMuted }]}>
+                    Account Number
+                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Text style={[styles.bankValue, { color: colors.text }]}>
+                      {accNo || (
+                        <ActivityIndicator size="small" color={colors.accent} />
+                      )}
+                    </Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.fundButton,
+                        {
+                          backgroundColor: colors.accent,
+                          marginLeft: 8,
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                        },
+                      ]}
+                      onPress={() => {
+                        // Copy to clipboard
+                        Clipboard.setString(accNo || "");
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.fundButtonText,
+                          {
+                            fontSize: 12,
+                            color: isDark ? "#000000" : "#ffffff",
+                          },
+                        ]}
+                      >
+                        copy{" "}
+                        <Ionicons
+                          name="copy-outline"
+                          size={12}
+                          color={isDark ? "#000000" : "#ffffff"}
+                        />
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
 
-              <View style={styles.bankInfoGroup}>
-                <Text style={[styles.bankLabel, { color: colors.textMuted }]}>
-                  Account Number
-                </Text>
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View style={styles.bankInfoGroup}>
+                  <Text style={[styles.bankLabel, { color: colors.textMuted }]}>
+                    Bank name
+                  </Text>
                   <Text style={[styles.bankValue, { color: colors.text }]}>
-                    {accountNumber || (
+                    {bankName || (
                       <ActivityIndicator size="small" color={colors.accent} />
                     )}
                   </Text>
-                  <TouchableOpacity
+                </View>
+
+                <View style={styles.bankFooter}>
+                  <Text style={[styles.bankOwner, { color: colors.text }]}>
+                    {accName || (
+                      <ActivityIndicator size="small" color={colors.accent} />
+                    )}
+                  </Text>
+                  <View
                     style={[
-                      styles.fundButton,
+                      styles.bankBadge,
                       {
-                        backgroundColor: colors.accent,
-                        marginLeft: 8,
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
+                        backgroundColor: isDark ? colors.surface : "#ffffff",
                       },
                     ]}
-                    onPress={() => {
-                      // Copy to clipboard
-                      Clipboard.setString(accountNumber || "");
-                    }}
                   >
-                    <Text
-                      style={[
-                        styles.fundButtonText,
-                        { fontSize: 12, color: isDark ? "#000000" : "#ffffff" },
-                      ]}
-                    >
-                      copy{" "}
-                      <Ionicons
-                        name="copy-outline"
-                        size={12}
-                        color={isDark ? "#000000" : "#ffffff"}
-                      />
-                    </Text>
-                  </TouchableOpacity>
+                    <Image source={AppLogo} style={styles.bankBadgeIcon} />
+                  </View>
                 </View>
-              </View>
-
-              <View style={styles.bankInfoGroup}>
-                <Text style={[styles.bankLabel, { color: colors.textMuted }]}>
-                  Bank name
-                </Text>
-                <Text style={[styles.bankValue, { color: colors.text }]}>
-                  {bankName || (
-                    <ActivityIndicator size="small" color={colors.accent} />
-                  )}
-                </Text>
-              </View>
-
-              <View style={styles.bankFooter}>
-                <Text style={[styles.bankOwner, { color: colors.text }]}>
-                  {accountName || (
-                    <ActivityIndicator size="small" color={colors.accent} />
-                  )}
-                </Text>
-                <View
-                  style={[
-                    styles.bankBadge,
-                    { backgroundColor: isDark ? colors.surface : "#ffffff" },
-                  ]}
-                >
-                  <Image source={AppLogo} style={styles.bankBadgeIcon} />
-                </View>
-              </View>
-            </View>
-          </ImageBackground>
-
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Our Services
-          </Text>
-
-          <View style={styles.servicesGrid}>
-            {services.map((service) => (
-              <TouchableOpacity
-                activeOpacity={0.75}
-                key={service.id}
-                style={styles.serviceCard}
-                onPress={() => {
-                  if (service.id === "airtime") {
-                    router.push("/dashboard/airtime");
-                  }
-                  if (service.id === "data") {
-                    router.push("/dashboard/data");
-                  }
-                  if (service.id === "electricity") {
-                    router.push("/dashboard/electricity");
-                  }
-                  if (service.id === "tv") {
-                    router.push("/dashboard/tv");
-                  }
-                  if (service.id === "exams") {
-                    router.push("/dashboard/exam");
-                  }
-                  if (service.id === "cac") {
-                    router.push("/dashboard/cac");
-                  }
-                  if (service.id === "more") {
-                    router.push("/dashboard/verify");
-                  }
-                  if (service.id === "transfer") {
-                    router.push({
-                      pathname: "/dashboard/transfer",
-                      params: { user: user?.name, balance: balance },
-                    });
-                  }
-                }}
-              >
-                <View
-                  style={[
-                    styles.serviceIconWrap,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                >
-                  <Image source={service.icon} style={styles.serviceIcon} />
-                </View>
-                <Text style={[styles.serviceLabel, { color: colors.text }]}>
-                  {service.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+              </>
+            )}
           </View>
+        </ImageBackground>
 
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Recent Transactions
-          </Text>
-          <View
-            style={[
-              styles.transactionsCard,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
-            {transactions.map((item, index) => (
-              <TouchableOpacity
-                key={item.id}
-                style={[
-                  styles.transactionRow,
-                  index !== 0 && [
-                    styles.transactionRowBorder,
-                    { borderTopColor: colors.border },
-                  ],
-                ]}
-                onPress={() => {
-                  setSelectedTrx(item);
-                  setIsModalVisible(true);
-                }}
-              >
-                <View>
-                  <Text
-                    style={[styles.transactionTitle, { color: colors.text }]}
-                  >
-                    {item.title}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.transactionSubtitle,
-                      { color: colors.textMuted },
-                    ]}
-                  >
-                    {item.subtitle}
-                  </Text>
-                </View>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          Our Services
+        </Text>
+        <View style={styles.servicesGrid}>
+          {services.map((service) => (
+            <ServiceButton key={service.id} service={service} colors={colors} />
+          ))}
+        </View>
+
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          Recent Transactions
+        </Text>
+        <View
+          style={[
+            styles.transactionsCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          {transactions.slice(0, 4).map((item, index) => (
+            <TouchableOpacity
+              key={item.id}
+              style={[
+                styles.transactionRow,
+                index !== 0 && [
+                  styles.transactionRowBorder,
+                  { borderTopColor: colors.border },
+                ],
+              ]}
+              onPress={() => {
+                setSelectedTrx(item);
+                setIsModalVisible(true);
+              }}
+            >
+              <View>
+                <Text style={[styles.transactionTitle, { color: colors.text }]}>
+                  {item.title}
+                </Text>
                 <Text
                   style={[
-                    styles.transactionAmount,
-                    item.subtitle?.toLowerCase().includes("successfully")
-                      ? styles.amountPositive
-                      : styles.amountNegative,
+                    styles.transactionSubtitle,
+                    { color: colors.textMuted },
                   ]}
                 >
-                  {item.amount}
+                  {item.subtitle}
                 </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+              </View>
+              <Text
+                style={[
+                  styles.transactionAmount,
+                  item.subtitle?.toLowerCase().includes("successfully")
+                    ? styles.amountPositive
+                    : styles.amountNegative,
+                ]}
+              >
+                {item.amount}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {/* <IdentityVerificationModal
+          onClose={() => setModalOpen(false)}
+          visible={modalOpen}
+          user={user}
+        /> */}
+      </ScrollView>
 
       <TransactionDetailModal
         isVisible={isModalVisible}
@@ -535,5 +511,251 @@ const Dashboard = () => {
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    paddingBottom: -50,
+  },
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 120,
+  },
+  headerWrap: {
+    paddingHorizontal: 20,
+    paddingTop: 72,
+    paddingBottom: 120,
+    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 20,
+  },
+  headerCard: {
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 24,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  avatar: {
+    height: 45,
+    width: 45,
+    borderRadius: 23,
+    backgroundColor: "rgba(255,255,255,0.75)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  avatarImage: {
+    width: 35,
+    height: 35,
+    // tintColor: "#2d6fb7",
+  },
+  headerTextWrap: {
+    flex: 1,
+  },
+  userName: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  userType: {
+    color: "#e6eeff",
+    fontSize: 12,
+    marginTop: 2,
+  },
+  balanceWrap: {
+    alignItems: "flex-end",
+  },
+  balanceLabel: {
+    color: "#e6eeff",
+    fontSize: 12,
+  },
+  balanceValue: {
+    color: "#ffffff",
+    fontSize: 20,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  bankCard: {
+    marginHorizontal: 20,
+    marginTop: -108,
+    borderRadius: 26,
+    overflow: "hidden",
+    elevation: 2,
+  },
+  bankCardImage: {
+    borderRadius: 26,
+  },
+  bankCardOverlay: {
+    backgroundColor: "rgba(255, 255, 255, 0.78)",
+    padding: 18,
+  },
+  bankRowTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  bankTitle: {
+    color: "#1a2b6d",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  bankSub: {
+    color: "#6b778c",
+    fontSize: 11,
+    marginTop: 2,
+  },
+  fundButton: {
+    backgroundColor: "#2d6fb7",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    alignSelf: "flex-start",
+  },
+  fundButtonText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  bankInfoGroup: {
+    marginTop: 12,
+  },
+  bankLabel: {
+    color: "#6b778c",
+    fontSize: 11,
+  },
+  bankValue: {
+    color: "#1a1f36",
+    fontSize: 15,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  bankFooter: {
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  bankOwner: {
+    color: "#1a1f36",
+    fontSize: 12,
+    fontWeight: "600",
+    flex: 1,
+    paddingRight: 8,
+  },
+  bankBadge: {
+    height: 40,
+    width: 80,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderRadius: 10,
+    shadowColor: "#2d6fb7",
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  bankBadgeIcon: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    overflow: "hidden",
+    borderRadius: 10,
+    elevation: 3,
+    // tintColor: "#2d6fb7",
+  },
+  bankBadgeText: {
+    color: "#2d6fb7",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  sectionTitle: {
+    color: "#1a2b6d",
+    fontSize: 15,
+    fontWeight: "700",
+    marginTop: 22,
+    marginBottom: 12,
+    marginHorizontal: 20,
+  },
+  servicesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 16,
+    justifyContent: "space-between",
+  },
+  serviceCard: {
+    width: "31%",
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: "center",
+
+    marginBottom: 12,
+  },
+  serviceIconWrap: {
+    borderWidth: 1,
+    borderColor: "#e6ecff",
+    shadowColor: "#99a7d7",
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 2,
+    height: 80,
+    width: 80,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  serviceIcon: {
+    width: 45,
+    height: 45,
+    // tintColor: "#2d6fb7",
+  },
+  serviceLabel: {
+    color: "#1a1f36",
+    fontSize: 11,
+    textAlign: "center",
+    fontWeight: "600",
+  },
+  transactionsCard: {
+    marginHorizontal: 20,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#e4e9ff",
+    overflow: "hidden",
+  },
+  transactionRow: {
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  transactionRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: "#eef2ff",
+  },
+  transactionTitle: {
+    color: "#1a1f36",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  transactionSubtitle: {
+    color: "#8a94a6",
+    fontSize: 11,
+    marginTop: 2,
+  },
+  transactionAmount: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  amountNegative: {
+    color: "#d14343",
+  },
+  amountPositive: {
+    color: "#20a85b",
+  },
+});
 
 export default Dashboard;

@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+notes.txt
+vtu-apps-5c6af-firebase-adminsdk-fbsvc-e9ce18e902.json

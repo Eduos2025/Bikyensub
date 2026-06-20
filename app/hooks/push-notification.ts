@@ -1,22 +1,24 @@
 // hooks/usePushNotifications.ts
 
 import { endPoints } from "@/constants/urls";
+import { APPNAME } from "@/constants/variables";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import { EventSubscription } from "expo-modules-core";
 import {
-    addNotificationReceivedListener,
-    addNotificationResponseReceivedListener,
-    AndroidImportance,
-    getExpoPushTokenAsync,
-    getPermissionsAsync,
-    Notification,
-    NotificationResponse,
-    requestPermissionsAsync,
-    setNotificationChannelAsync,
-    setNotificationHandler,
+  addNotificationReceivedListener,
+  addNotificationResponseReceivedListener,
+  AndroidImportance,
+  getExpoPushTokenAsync,
+  getPermissionsAsync,
+  Notification,
+  NotificationResponse,
+  requestPermissionsAsync,
+  setNotificationChannelAsync,
+  setNotificationHandler,
 } from "expo-notifications";
+import { router } from "expo-router";
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 
@@ -65,7 +67,7 @@ export function usePushNotifications(userToken: string | null) {
         // Android notification channel
         if (Platform.OS === "android") {
           await setNotificationChannelAsync("default", {
-            name: "AdilData Notifications",
+            name: `${APPNAME} Notifications`,
             importance: AndroidImportance.MAX,
             vibrationPattern: [0, 250, 250, 250],
             sound: "default",
@@ -108,7 +110,7 @@ export function usePushNotifications(userToken: string | null) {
           },
           body: JSON.stringify({
             token: userToken,
-            expo_push_token: expoPushToken,
+            fcm_token: expoPushToken,
             platform: Platform.OS,
           }),
         });
@@ -142,6 +144,23 @@ export function usePushNotifications(userToken: string | null) {
         const screen = data?.screen as string | undefined;
 
         if (!screen) return;
+
+        switch (data.screen) {
+          case "transaction":
+            router.push("/dashboard/transactions");
+            break;
+
+          case "notification":
+            router.push("/dashboard/notifications");
+            break;
+
+          case "profile":
+            router.push("/dashboard/(tabs)/profile");
+            break;
+
+          default:
+            router.push("/dashboard");
+        }
       },
     );
 

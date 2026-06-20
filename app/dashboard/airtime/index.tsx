@@ -1,13 +1,18 @@
 import AlertModal from "@/app/components/AlertModal";
-import Header from "@/app/components/header";
-import { endPoints } from "@/constants/urls";
+import useUserStore from "@/app/states/user";
+import { purchaseAirtime } from "@/app/utils/airtime-purchase";
+import { authenticateFingerprint } from "@/app/utils/authenticate-fingerprint";
+import { detectNetworkUtil } from "@/app/utils/detect-network";
+import { pickContact } from "@/app/utils/pick-contact";
+import { networks } from "@/constants/networks";
+import { beneficiaryType, NetworkType } from "@/constants/types";
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Header } from "@react-navigation/elements";
 import { LinearGradient } from "expo-linear-gradient";
-import * as LocalAuthentication from "expo-local-authentication";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -25,62 +30,11 @@ import {
 import Modal from "react-native-modal";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const networks = [
-  { id: "mtn", label: "MTN", logo: require("@/assets/images/mtn.png") },
-  {
-    id: "airtel",
-    label: "Airtel",
-    logo: require("@/assets/images/airtel.png"),
-  },
-  { id: "glo", label: "Glo", logo: require("@/assets/images/glo.png") },
-  {
-    id: "etisalat",
-    label: "9mobile",
-    logo: require("@/assets/images/9mobile.png"),
-  },
-];
-
-// Map network from API response
-const mapNetworkFromAPI = (apiNetwork: any): string | null => {
-  if (typeof apiNetwork === "string") {
-    const networkMap: { [key: string]: string } = {
-      "mtn nigeria": "mtn",
-      "airtel nigeria": "airtel",
-      "glo nigeria": "glo",
-      "9mobile nigeria": "etisalat",
-      "etisalat nigeria": "etisalat",
-      "t2 mobile nigeria": "etisalat",
-      "9mobile": "etisalat",
-      etisalat: "etisalat",
-    };
-    const key = apiNetwork.toLowerCase().trim();
-    return networkMap[key] || null;
-  }
-
-  // If it's an object with id property
-  if (apiNetwork && typeof apiNetwork === "object" && apiNetwork.id) {
-    const idMap: { [key: string]: string } = {
-      mtn: "mtn",
-      airtel: "airtel",
-      glo: "glo",
-      "9mobile": "etisalat",
-      etisalat: "etisalat",
-      "t2 mobile": "etisalat",
-    };
-    const id = String(apiNetwork.id).toLowerCase().trim();
-    return idMap[id] || null;
-  }
-
-  return null;
-};
-
 const Airtime = () => {
   const { isDark, colors } = useTheme();
-  const [selectedNetwork, setSelectedNetwork] = useState<{
-    id: string;
-    label: string;
-    logo: any;
-  } | null>(null);
+  const [selectedNetwork, setSelectedNetwork] = useState<NetworkType | null>(
+    null,
+  );
 
   const [processing, setProcessing] = useState(false);
   const [detectingNetwork, setDetectingNetwork] = useState(false);
@@ -100,6 +54,10 @@ const Airtime = () => {
   const discountRate = 0.01;
   const amountValue = Number(amount) || 0;
   const amountToPay = Math.max(amountValue - amountValue * discountRate, 0);
+
+  const balance = useUserStore((s) => s.user?.walletBalance) || 0;
+
+  const beneficiaries = useUserStore((s) => s.beneficiaries) || [];
 
   const resetForm = () => {
     setSelectedNetwork(null);
@@ -147,52 +105,29 @@ const Airtime = () => {
     }, []),
   );
 
-  // Detect Network Function
+  const getContactFromPhone = async () => {
+    const phone = await pickContact();
+
+    if (!phone) return;
+
+    setPhoneNumber(phone);
+
+    handlePhoneChange(phone);
+  };
+
   const detectNetwork = async (phone: string) => {
     try {
-      const res = await fetch(endPoints.detectNetwork, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ phone }),
-      });
+      const detected = await detectNetworkUtil(phone);
 
-      const data = await res.json();
-      console.log("Detect Network Response:", data);
-
-      if (data.network || data.raw) {
-        // Map API response network to our network id
-        const networkId = mapNetworkFromAPI(data.network || data.raw);
-        console.log("Mapped Network ID:", networkId);
-
-        if (networkId) {
-          const detected = networks.find((net) => net.id === networkId);
-          console.log("Detected Network:", detected);
-
-          if (detected) {
-            setSelectedNetwork(detected);
-            setManualListing(false);
-          } else {
-            setManualListing(true);
-            setAlertTitle("Detection Failed");
-            setAlertMessage("Unable to find network. Please select manually.");
-            setAlertVisible(true);
-          }
-        } else {
-          setManualListing(true);
-          setAlertTitle("Detection Failed");
-          setAlertMessage(
-            "Network format not recognized. Please select manually.",
-          );
-          setAlertVisible(true);
-        }
-      } else {
+      if (!detected) {
         setManualListing(true);
         setAlertTitle("Detection Failed");
-        setAlertMessage(data.message || "Unable to detect network.");
+        setAlertMessage("Unable to detect network.");
         setAlertVisible(true);
       }
+
+      setSelectedNetwork(detected);
+      setManualListing(false);
     } catch (err) {
       console.log("Detection Error:", err);
       setManualListing(true);
@@ -229,70 +164,16 @@ const Airtime = () => {
     }
 
     try {
-      const compatible = await LocalAuthentication.hasHardwareAsync();
-      if (!compatible) {
-        setAlertTitle("Not Supported");
-        setAlertMessage("Device does not support fingerprint.");
-        setAlertVisible(true);
-        return;
-      }
+      const result = await authenticateFingerprint("Pay with Fingerprint");
 
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: "Pay with Fingerprint",
-      });
-
-      if (!result.success) {
+      if (!result) {
         setAlertTitle("Fingerprint Failed");
         setAlertMessage("Authentication failed. Please try again.");
         setAlertVisible(true);
         return;
       }
 
-      setProcessing(true);
-
-      const userToken = await AsyncStorage.getItem("userToken");
-
-      if (!userToken) {
-        setAlertTitle("Error");
-        setAlertMessage("User not authenticated");
-        setAlertVisible(true);
-        setProcessing(false);
-        return;
-      }
-
-      if (!selectedNetwork || !phoneNumber || !amount) {
-        setAlertTitle("Missing Fields");
-        setAlertMessage("Please fill all fields");
-        setAlertVisible(true);
-        setProcessing(false);
-        return;
-      }
-
-      const response = await fetch(endPoints.buyAirtime, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token: userToken,
-          amount: Number(amount),
-          number: phoneNumber,
-          network: selectedNetwork!.id,
-          pin: pin || "fingerprint",
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setPinVisible(false);
-        goToResult(true);
-        getBalance(true);
-      } else {
-        setAlertTitle("Failed");
-        setAlertMessage(data.message || "Transaction failed");
-        setAlertVisible(true);
-      }
+      await handleAirtimePurchase("fingerprint");
     } catch (error) {
       setAlertTitle("Error");
       setAlertMessage("Unable to complete transaction.");
@@ -302,96 +183,39 @@ const Airtime = () => {
     }
   };
 
-  const [refreshing, setRefreshing] = useState(false);
-  const [balance, setBalance] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [email, setEmail] = useState("");
-
-  const getBalance = async (isRefresh = false) => {
-    try {
-      if (!isRefresh) setLoading(true);
-
-      const userToken = await AsyncStorage.getItem("userToken");
-
-      if (!userToken) {
-        console.log("No token found");
-        return;
-      }
-
-      const response = await fetch(endPoints.buyAirtime, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token: userToken }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setBalance(Number(data.balance) || 0);
-        setEmail(data.email || "");
-      } else {
-        console.log("API Error:", data.message);
-      }
-    } catch (error) {
-      console.error("Fetch balance error:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+  const handleAirtimePurchase = async (method?: string) => {
+    if (!selectedNetwork || !phoneNumber || !amount) {
+      setAlertTitle("Missing Fields");
+      setAlertMessage("Please fill all fields");
+      setAlertVisible(true);
+      setProcessing(false);
+      return;
     }
-  };
 
-  useEffect(() => {
-    getBalance();
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      getBalance(true);
-    }, []),
-  );
-
-  const handleAirtimePurchase = async () => {
     try {
       setProcessing(true);
+      const res = await purchaseAirtime(
+        Number(amount),
+        phoneNumber,
+        selectedNetwork!.id,
+        method || pin,
+      );
 
-      const userToken = await AsyncStorage.getItem("userToken");
-
-      if (!userToken) {
-        setAlertTitle("Error");
-        setAlertMessage("User not authenticated");
-        setAlertVisible(true);
-        setProcessing(false);
-        return;
-      }
-
-      const response = await fetch(endPoints.buyAirtime, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token: userToken,
-          amount: Number(amount),
-          number: phoneNumber,
-          network: selectedNetwork!.id,
-          pin: pin,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setPinVisible(false);
-        goToResult(true);
-        getBalance(true);
-      } else {
+      if (!res) {
         setPin("");
         setAlertTitle("Failed");
-        setAlertMessage(data.message || "Transaction failed");
+        setAlertMessage("Transaction failed");
         setAlertVisible(true);
       }
+
+      const beneficiary: beneficiaryType = {
+        network: selectedNetwork!,
+        phone: phoneNumber,
+      };
+
+      useUserStore.getState().updateBeneficiaries(beneficiary);
+      setPinVisible(false);
+      goToResult(true);
     } catch (error) {
       setAlertTitle("Error");
       setAlertMessage("Something went wrong");
@@ -408,7 +232,7 @@ const Airtime = () => {
         { marginTop: -30, backgroundColor: colors.background },
       ]}
     >
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <StatusBar barStyle={"light-content"} />
       <KeyboardAvoidingView
         style={[styles.container, { backgroundColor: colors.background }]}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -418,8 +242,39 @@ const Airtime = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* HEADER */}
           <Header title="Buy Airtime" />
-
+          {beneficiaries.length > 0 && (
+            <View style={{ padding: 16 }}>
+              <Text style={{ fontWeight: "700", marginBottom: 16 }}>
+                Recent Beneficiaries
+              </Text>
+              <View style={{ flexDirection: "row", gap: 16 }}>
+                {beneficiaries.map((beneficiary) => (
+                  <TouchableOpacity
+                    key={beneficiary.phone}
+                    style={{
+                      gap: 5,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                    onPress={() => {
+                      handlePhoneChange(beneficiary.phone);
+                      setPhoneNumber(beneficiary.phone);
+                    }}
+                  >
+                    <Image
+                      source={beneficiary.network.logo}
+                      style={styles.networkLogo}
+                    />
+                    <Text style={{ color: colors.textMuted }}>
+                      {beneficiary.phone}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
           <View style={styles.content}>
             {/* Phone Number input first */}
             <Text style={[styles.inputLabel, { color: colors.text }]}>
@@ -440,7 +295,7 @@ const Airtime = () => {
                 value={phoneNumber}
                 onChangeText={handlePhoneChange}
                 placeholderTextColor={colors.textMuted}
-                style={[styles.textInput, { color: colors.text }]}
+                style={[styles.textInput, { color: colors.textMuted }]}
                 maxLength={11}
               />
               {detectingNetwork ? (
@@ -460,7 +315,18 @@ const Airtime = () => {
                     color={colors.textMuted}
                   />
                 </TouchableOpacity>
-              ) : null}
+              ) : (
+                <TouchableOpacity
+                  onPress={getContactFromPhone}
+                  style={{ margin: 8 }}
+                >
+                  <Ionicons
+                    name="person-circle-outline"
+                    size={32}
+                    color={colors.primary}
+                  />
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Show Network selection only after detection */}
@@ -690,8 +556,10 @@ const Airtime = () => {
                 style={[
                   styles.cancelButton,
                   {
-                    backgroundColor: isDark ? colors.surface : "#f1f5f9",
+                    backgroundColor: colors.surface,
                     borderColor: colors.secondary,
+                    justifyContent: "center",
+                    alignItems: "center",
                   },
                 ]}
                 onPress={() => setConfirmVisible(false)}
@@ -721,7 +589,7 @@ const Airtime = () => {
                   <Text style={styles.payText}>Insufficient Balance</Text>
                 )}
                 <LinearGradient
-                  colors={isDark ? colors.gradient : ["#2A98CF", "#281D74"]}
+                  colors={colors.gradient}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.payGradient}
@@ -886,24 +754,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 40,
   },
-  header: {
-    paddingHorizontal: 18,
-    paddingTop: 60,
-    paddingBottom: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  headerLink: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  headerTitle: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
+
   content: {
     paddingHorizontal: 18,
     paddingTop: 24,
@@ -1057,10 +908,6 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    borderRadius: 14,
-    borderWidth: 2,
-    paddingVertical: 12,
-    alignItems: "center",
   },
   cancelText: {
     fontWeight: "600",

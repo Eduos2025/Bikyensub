@@ -11,13 +11,6 @@ export const ExamsIcon = require("@/assets/images/exam.png");
 export const TvIcon = require("@/assets/images/tv.png");
 export const CacIcon = require("@/assets/images/cac.png");
 
-export const transferIcon = require("@/assets/images/transfer.png");
-export const bvnIcon = require("@/assets/images/bvn.png");
-export const ninIcon = require("@/assets/images/nin.png");
-export const moreIcon = require("@/assets/images/more.png");
-
-export const starIcon = require("@/assets/images/star.png");
-export const bankIcon = require("@/assets/images/bank.png");
-
-export const FailedIcon = require("@/assets/images/fail.png");
-export const SuccessIcon = require("@/assets/images/success.png");
+export const mtnLogo = require("@/assets/images/mtn.png");
+export const gloLogo = require("@/assets/images/glo.png");
+export const etisalatLogo = require("@/assets/images/9mobile.png");

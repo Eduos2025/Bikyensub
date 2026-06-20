@@ -1,7 +1,5 @@
-import { AppLogo } from "@/constants/images";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as LocalAuthentication from "expo-local-authentication";
 import React, { useEffect, useState } from "react";
 import {
   Image,
@@ -14,9 +12,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { authenticateFingerprint } from "../utils/authenticate-fingerprint";
+import { checkFingerprintAvailabe } from "../utils/check-fingerprint-available";
+import { login, loginWithFingerprint } from "../utils/login";
 import AlertModal from "./AlertModal";
 import GradientButton from "./buttons";
-import { endPoints } from "@/constants/urls";
+import { AppLogo } from "@/constants/images";
+
 
 interface LockOverlayProps {
   onUnlock: () => void;
@@ -43,7 +45,7 @@ const LockOverlay: React.FC<LockOverlayProps> = ({ onUnlock }) => {
         if (userData) {
           const parsed = JSON.parse(userData);
           setEmail(parsed.email || "");
-          setUserName(parsed.name || "User");
+          setUserName(parsed.sname || "User");
         }
 
         if (storedFinger === "1") {
@@ -59,49 +61,51 @@ const LockOverlay: React.FC<LockOverlayProps> = ({ onUnlock }) => {
   }, []);
 
   const handleFingerprintUnlock = async () => {
-    const compatible = await LocalAuthentication.hasHardwareAsync();
-    if (!compatible) return;
-
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: "Unlock ",
-      fallbackLabel: "Use Password",
-    });
-
-    if (result.success) {
+    try {
       setIsLoading(true);
-      try {
-        const token = await AsyncStorage.getItem("userToken");
-        if (!token) {
-          setAlertTitle("Error");
-          setAlertMessage("No saved session found.");
-          setAlertVisible(true);
-          return;
-        }
+      const isAvailable = await checkFingerprintAvailabe();
 
-        const response = await fetch(
-        endPoints.verifyToken,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token }),
-          },
-        );
-
-        const json = await response.json();
-        if (json.success) {
-          onUnlock();
-        } else {
-          setAlertTitle("Session Expired");
-          setAlertMessage("Please login with your password.");
-          setAlertVisible(true);
-        }
-      } catch (err) {
-        setAlertTitle("Error");
-        setAlertMessage("Connection error. Try again.");
+      if (!isAvailable) {
+        setAlertTitle("Fingerprint Unavailable");
+        setAlertMessage("Please use with your password.");
         setAlertVisible(true);
-      } finally {
-        setIsLoading(false);
+        return;
       }
+
+      const isAutenticated = await authenticateFingerprint(
+        "Unlock app with fingerprint",
+      );
+
+      if (!isAutenticated) {
+        setAlertTitle("Cancelled");
+        setAlertMessage("");
+        setAlertVisible(true);
+        return;
+      }
+
+      const res = await loginWithFingerprint();
+
+      if (res.success) {
+        setAlertTitle("Success");
+        setAlertMessage("Login successful");
+        setAlertVisible(true);
+
+        onUnlock();
+      }
+
+      if (res.error) {
+        setAlertTitle("Error");
+        setAlertMessage(res.message);
+
+        setAlertVisible(true);
+        return;
+      }
+    } catch (err) {
+      setAlertTitle("Error");
+      setAlertMessage("Connection error. Try again.");
+      setAlertVisible(true);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -115,25 +119,22 @@ const LockOverlay: React.FC<LockOverlayProps> = ({ onUnlock }) => {
 
     setIsLoading(true);
     try {
-      const response = await fetch(endPoints.login, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      const res = await login(email, password);
 
-      const json = await response.json();
-
-      if (json.success) {
-        // ✅ CRITICAL: Update storage with new token to prevent background expiration
-        await AsyncStorage.setItem("user", JSON.stringify(json.user));
-        await AsyncStorage.setItem("userToken", json.token);
-        await AsyncStorage.setItem("finger", json.finger);
+      if (res.success) {
+        setAlertTitle("Success");
+        setAlertMessage("Login successful");
+        setAlertVisible(true);
 
         onUnlock();
-      } else {
-        setAlertTitle("Unlock Failed");
-        setAlertMessage(json.message || "Invalid password");
+      }
+
+      if (res.error) {
+        setAlertTitle("Error");
+        setAlertMessage(res.message);
+
         setAlertVisible(true);
+        return;
       }
     } catch (err) {
       setAlertTitle("Error");
