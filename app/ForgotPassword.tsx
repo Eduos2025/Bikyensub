@@ -96,9 +96,7 @@ const ForgotPassword = () => {
               fontSize: 16,
               fontWeight: "600",
             }}
-          >
-            Back
-          </Text>
+          ></Text>
         </TouchableOpacity>
 
         <ScrollView

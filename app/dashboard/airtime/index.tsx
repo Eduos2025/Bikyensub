@@ -1,4 +1,5 @@
 import AlertModal from "@/app/components/AlertModal";
+import Header from "@/app/components/header";
 import useUserStore from "@/app/states/user";
 import { purchaseAirtime } from "@/app/utils/airtime-purchase";
 import { authenticateFingerprint } from "@/app/utils/authenticate-fingerprint";
@@ -9,7 +10,6 @@ import { beneficiaryType, NetworkType } from "@/constants/types";
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Header } from "@react-navigation/elements";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -747,6 +747,7 @@ const Airtime = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    paddingHorizontal: 18,
   },
   container: {
     flex: 1,
@@ -756,7 +757,6 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    paddingHorizontal: 18,
     paddingTop: 24,
   },
   sectionTitle: {

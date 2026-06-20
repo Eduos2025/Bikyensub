@@ -1,17 +1,17 @@
 import React from "react";
-import { StatusBar, StyleSheet, View } from "react-native";
+import { SafeAreaView, StatusBar, StyleSheet } from "react-native";
 import Header from "../../components/header";
-import useUserStore from "../../states/user";
 import IdentityVerification from "../../components/kyc-modal";
+import useUserStore from "../../states/user";
 
 const kyc = () => {
   const user = useUserStore((s) => s.user);
   return (
-    <View>
+    <SafeAreaView style={{ marginHorizontal: 18, marginTop: 24 }}>
       <StatusBar barStyle={"light-content"} />
       <Header title="Identity Verification" />
       <IdentityVerification />
-    </View>
+    </SafeAreaView>
   );
 };
 

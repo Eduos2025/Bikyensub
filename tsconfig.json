@@ -13,5 +13,5 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-, "app/dashboard/exam/index", "app/dashboard/data/index.tsx"  ]
+, "app/dashboard/exams/index", "app/dashboard/data/index.tsx"  ]
 }

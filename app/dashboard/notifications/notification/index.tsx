@@ -5,7 +5,6 @@ import { useLocalSearchParams } from "expo-router";
 import React, { useEffect } from "react";
 import { SafeAreaView, ScrollView, StatusBar, Text, View } from "react-native";
 
-
 const NotificationDetailsScreen = () => {
   const { id, title, message, createdAt } = useLocalSearchParams();
 
@@ -28,14 +27,14 @@ const NotificationDetailsScreen = () => {
 
       <ScrollView
         contentContainerStyle={{
-          padding: 20,
+          margin: 18,
         }}
       >
         {/* Header Card */}
         <View
           style={{
             borderRadius: 20,
-            padding: 20,
+
             marginBottom: 20,
           }}
         >
@@ -68,7 +67,6 @@ const NotificationDetailsScreen = () => {
           style={{
             backgroundColor: colors.background,
             borderRadius: 20,
-            padding: 20,
           }}
         >
           <Text

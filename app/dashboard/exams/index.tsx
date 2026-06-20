@@ -83,8 +83,8 @@ const Exams = () => {
     resetForm();
     router.replace({
       pathname: success
-        ? "/dashboard/exam/exams-success"
-        : "/dashboard/exam/exams-failed",
+        ? "/dashboard/exams/success"
+        : "/dashboard/exams/failed",
       params: params,
     });
   };
@@ -167,22 +167,19 @@ const Exams = () => {
       let allPins: any[] = [];
 
       for (let i = 0; i < Number(selectedQty); i++) {
-        const response = await fetch(
-          endPoints.buyEducationPin,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              token,
-              service: selectedExam?.id,
-              number: "08000000000", // you can replace with user phone
-              pin: userPin,
-              profileId: selectedExam?.id === "jamb" ? profileId : undefined,
-            }),
+        const response = await fetch(endPoints.buyEducationPin, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        );
+          body: JSON.stringify({
+            token,
+            service: selectedExam?.id,
+            number: "08000000000", // you can replace with user phone
+            pin: userPin,
+            profileId: selectedExam?.id === "jamb" ? profileId : undefined,
+          }),
+        });
 
         const res = await response.json();
 
@@ -205,7 +202,7 @@ const Exams = () => {
 
       // 👉 Navigate with pins
       router.replace({
-        pathname: "/dashboard/exam/exams-success",
+        pathname: "/dashboard/exams/success",
         params: params,
       });
     } catch (error: any) {
@@ -718,6 +715,7 @@ const Exams = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    paddingHorizontal: 18,
   },
   container: {
     flex: 1,
@@ -726,7 +724,6 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    paddingHorizontal: 18,
     paddingTop: 70,
     paddingBottom: 16,
     flexDirection: "row",
@@ -744,7 +741,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   content: {
-    paddingHorizontal: 18,
     paddingTop: 24,
   },
   sectionTitle: {

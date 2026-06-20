@@ -5,7 +5,6 @@ import React, { useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
@@ -93,12 +92,12 @@ const IdentityVerification = () => {
   };
 
   return (
-    <SafeAreaView>
+    <>
       <KeyboardAvoidingView
         style={[{ backgroundColor: colors.background }]}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View style={{ padding: 32 }}>
+        <View>
           {/* Info Box */}
           <View style={[styles.infoBox, { backgroundColor: colors.accent }]}>
             <View style={styles.infoIcon}>
@@ -222,7 +221,7 @@ const IdentityVerification = () => {
           onClose={() => setAlertVisible(false)}
         />
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </>
   );
 };
 
@@ -237,7 +236,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#3a3838",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    paddingHorizontal: 22,
     paddingTop: 22,
     paddingBottom: 30,
     marginTop: "auto",

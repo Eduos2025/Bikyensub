@@ -16,7 +16,7 @@ const index = () => {
   const markAllAsRead = useNotificationStore((state) => state.markAllAsRead);
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, marginHorizontal: 18 }}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <Header title="Notifications" />
       <View

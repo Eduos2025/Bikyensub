@@ -1,13 +1,9 @@
 import Header from "@/app/components/header";
 import TransactionDetailModal from "@/app/components/TransactionDetailModal";
-import { endPoints } from "@/constants/urls";
+import useUserStore from "@/app/states/user";
 import { useTheme } from "@/context/ThemeContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LinearGradient } from "expo-linear-gradient";
-import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -32,63 +28,11 @@ type Transaction = {
 
 const Transactions = () => {
   const { isDark, colors } = useTheme();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedTrx, setSelectedTrx] = useState<Transaction | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
-  const fetchTransactions = async () => {
-    const userToken = await AsyncStorage.getItem("userToken");
-    if (!userToken) return;
+  const transactions = useUserStore((s) => s.transactions) || [];
 
-    try {
-      const response = await fetch(
-       endPoints.getTransactions,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: userToken }),
-        },
-      );
-
-      const data = await response.json(); // <-- `data` is defined here
-
-      if (!data || !data.success) {
-        Alert.alert("Error", data?.message || "Failed to fetch transactions");
-        return;
-      }
-
-      // Map and format transactions for display
-      const formatted: Transaction[] = data.transactions.map(
-        (trx: any, index: number) => ({
-          ...trx, // Spread everything from API (token, etc.)
-          id: trx.id.toString(),
-          title: trx.title,
-          subtitle: trx.subtitle,
-          amount: trx.amount,
-          negative: trx.negative,
-          status: trx.status,
-          phone: trx.phone,
-          date: trx.date,
-          fullReceipt: trx.fullReceipt,
-        }),
-      );
-
-      setTransactions(formatted);
-    } catch (error) {
-      console.error("Fetch transactions error:", error);
-      Alert.alert("Error", "Network or server error");
-    }
-  };
-
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchTransactions();
-    }, []),
-  );
   return (
     <SafeAreaView
       style={[
@@ -96,7 +40,7 @@ const Transactions = () => {
         { marginTop: -30, backgroundColor: colors.background },
       ]}
     >
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <StatusBar barStyle={"light-content"} />
       <KeyboardAvoidingView
         style={[styles.container, { backgroundColor: colors.background }]}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -106,7 +50,8 @@ const Transactions = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Header title="Transaction History"/>
+          <Header title="Transactions" showBack={false} showHelp={false} />
+
           <View style={styles.content}>
             <View
               style={[
@@ -169,6 +114,7 @@ const Transactions = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    paddingHorizontal: 18,
   },
   container: {
     flex: 1,
@@ -177,7 +123,6 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    paddingHorizontal: 18,
     paddingTop: 70,
     paddingBottom: 16,
     flexDirection: "row",

@@ -3,13 +3,23 @@ import { router } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-const Header = ({ title }: { title: string }) => {
-  const { isDark, colors } = useTheme();
+const Header = ({
+  title,
+  showBack = true,
+  showHelp = true,
+}: {
+  title: string;
+  showBack?: boolean;
+  showHelp?: boolean;
+}) => {
+  const { colors } = useTheme();
   return (
     <View style={styles.header}>
-      <TouchableOpacity onPress={() => router.back()}>
-        <Text style={styles.headerLink}>Back</Text>
-      </TouchableOpacity>
+      {showBack && (
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.headerLink}>Back</Text>
+        </TouchableOpacity>
+      )}
       <Text
         style={[
           styles.headerTitle,
@@ -20,9 +30,11 @@ const Header = ({ title }: { title: string }) => {
       >
         {title}
       </Text>
-      <TouchableOpacity>
-        <Text style={styles.headerLink}>Help</Text>
-      </TouchableOpacity>
+      {showHelp && (
+        <TouchableOpacity>
+          <Text style={styles.headerLink}>Help</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -31,8 +43,7 @@ export default Header;
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 18,
-    paddingTop: 60,
+    paddingTop: 32,
     paddingBottom: 16,
     flexDirection: "row",
     alignItems: "center",
@@ -43,7 +54,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: "700",
+    alignSelf: "center",
   },
 });

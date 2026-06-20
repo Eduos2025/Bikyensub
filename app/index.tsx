@@ -16,7 +16,7 @@ import GradientButton from "./components/buttons";
 
 export default function Index() {
   const { isDark, colors } = useTheme();
-  const { width, height } = useWindowDimensions();
+
 
   useEffect(() => {
     checkLoginStatus();

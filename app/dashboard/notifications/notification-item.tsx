@@ -12,7 +12,7 @@ const NotificationItem = ({ item }: { item: NotificationType }) => {
       style={{
         flexDirection: "row",
         padding: 16,
-        marginHorizontal: 16,
+
         marginVertical: 6,
         backgroundColor: colors.background,
         borderRadius: 16,

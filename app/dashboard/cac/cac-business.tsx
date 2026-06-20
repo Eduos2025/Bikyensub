@@ -1,4 +1,5 @@
 import AlertModal from "@/app/components/AlertModal";
+import Header from "@/app/components/header";
 import { endPoints } from "@/constants/urls";
 import { useTheme } from "@/context/ThemeContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -8,17 +9,17 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Modal from "react-native-modal";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -167,17 +168,14 @@ const BusinessNameRegistration = () => {
         type: "image/png",
       });
 
-      const response = await fetch(
-        endPoints.registerCAC,
-        {
-          method: "POST",
-          body: formData,
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "multipart/form-data",
-          },
+      const response = await fetch(endPoints.registerCAC, {
+        method: "POST",
+        body: formData,
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "multipart/form-data",
         },
-      );
+      });
 
       const responseData = await response.json();
 
@@ -221,21 +219,7 @@ const BusinessNameRegistration = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <LinearGradient
-            colors={colors.gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={styles.header}
-          >
-            <TouchableOpacity onPress={() => router.back()}>
-              <Text style={styles.headerLink}>Back</Text>
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Business Name Registration</Text>
-            <TouchableOpacity>
-              <Text style={styles.headerLink}>Help</Text>
-            </TouchableOpacity>
-          </LinearGradient>
-
+          <Header title="Business Name Registration" />
           <View style={styles.content}>
             <View
               style={[
@@ -645,12 +629,12 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    paddingHorizontal: 18,
   },
   scrollContent: {
     paddingBottom: 40,
   },
   header: {
-    paddingHorizontal: 18,
     paddingTop: 60,
     paddingBottom: 16,
     flexDirection: "row",
@@ -668,7 +652,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   content: {
-    paddingHorizontal: 18,
     paddingTop: 20,
   },
   noteBubble: {

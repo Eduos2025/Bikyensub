@@ -37,6 +37,8 @@ type Transaction = {
 
 import * as Haptics from "expo-haptics";
 
+import Header from "@/app/components/header";
+import NotificationIcon from "@/app/components/notification_icon";
 import TransactionDetailModal from "@/app/components/TransactionDetailModal";
 import useNotificationStore from "@/app/states/notifications";
 import useUserStore from "@/app/states/user";
@@ -139,8 +141,6 @@ const Dashboard = () => {
 
   const loadBeneficiaries = useUserStore((s) => s.loadBeneficiaries);
 
-  const unreadCount = useNotificationStore((state) => state.unreadCount);
-
   const fetchNotifications = useNotificationStore(
     (state) => state.fetchNotifications,
   );
@@ -229,48 +229,19 @@ const Dashboard = () => {
         }
       >
         <View style={styles.headerWrap}>
-          <TouchableOpacity
+          <View
             style={{
-              alignSelf: "flex-end",
-
-              margin: 8,
-              position: "relative",
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
             }}
-            onPress={() => router.push("/dashboard/notifications")}
           >
-            <Ionicons
-              name="notifications"
-              style={{
-                color: colors.text,
-                fontSize: 32,
-              }}
-            />
-            <View
-              style={{
-                backgroundColor: colors.error,
-                borderRadius: "50%",
-                justifyContent: "center",
-                alignItems: "center",
-                width: 16,
-                height: 16,
-                position: "absolute",
-                right: 0,
-              }}
-            >
-              <Text
-                style={{
-                  color: colors.surface,
-                  fontSize: 10,
-                  fontWeight: "bold",
-                }}
-              >
-                {unreadCount}
-              </Text>
-            </View>
-          </TouchableOpacity>
+            <Header title="Bikyensub" showBack={false} showHelp={false} />
+            <NotificationIcon />
+          </View>
 
           <View
-            style={[styles.headerCard, { backgroundColor: colors.secondary }]}
+            style={[styles.headerCard, { backgroundColor: colors.primary }]}
           >
             <View style={styles.avatar}>
               <Image source={avater} style={styles.avatarImage} />
@@ -340,7 +311,7 @@ const Dashboard = () => {
                   style={[
                     styles.fundButton,
                     {
-                      backgroundColor: colors.accent,
+                      backgroundColor: colors.secondary,
                       elevation: 1,
                     },
                   ]}
@@ -525,7 +496,7 @@ const styles = StyleSheet.create({
   },
   headerWrap: {
     paddingHorizontal: 20,
-    paddingTop: 72,
+    paddingTop: 32,
     paddingBottom: 120,
     borderBottomRightRadius: 20,
     borderBottomLeftRadius: 20,

@@ -1,4 +1,5 @@
 import AlertModal from "@/app/components/AlertModal";
+import Header from "@/app/components/header";
 import useUserStore from "@/app/states/user";
 import { checkFingerprintAvailabe } from "@/app/utils/check-fingerprint-available";
 import { login } from "@/app/utils/login";
@@ -6,7 +7,6 @@ import { toggleFingerprint } from "@/app/utils/toggle-fingerprint";
 import { updatePassword } from "@/app/utils/update-password";
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
-import { Header } from "@react-navigation/elements";
 import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
@@ -208,9 +208,7 @@ const Profile = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* HEADER */}
-          <Header title="My Profile" />
-
+          <Header title="Profile" showBack={false} showHelp={false} />
           <View style={styles.content}>
             <View style={styles.avatarWrap}>
               <Image source={Avatar} style={styles.avatarImage} />
@@ -612,6 +610,7 @@ const Profile = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    paddingHorizontal: 18,
   },
   container: {
     flex: 1,
@@ -620,7 +619,6 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    paddingHorizontal: 18,
     paddingTop: 60,
     paddingBottom: 16,
     flexDirection: "row",
@@ -638,7 +636,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   content: {
-    paddingHorizontal: 18,
     paddingTop: 30,
     alignItems: "center",
   },

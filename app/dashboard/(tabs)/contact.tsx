@@ -1,5 +1,5 @@
 import Header from "@/app/components/header";
-import { APPEMAIL } from "@/constants/variables";
+import { APPEMAIL, APPNAME, PHONE_NUMBER } from "@/constants/variables";
 import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -22,12 +22,11 @@ const Contact = () => {
     // Add your phone number here.
     // IMPORTANT: Use the international format without any +, leading zeros, brackets, or dashes.
     // Example for US number: '15551234567'
-    const phoneNumber = "+2348160327173";
-    const message = "Hello! rahausub Agents, I have a question."; // Optional pre-filled message
+    const message = `Hello! ${APPNAME} Agents, I have a question.`; // Optional pre-filled message
 
     // You can use either the whatsapp:// scheme or the universal link.
     // The universal link (https://wa.me/...) is often safer as it gracefully falls back to the browser if the app fails.
-    const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    const url = `https://wa.me/${PHONE_NUMBER}?text=${encodeURIComponent(message)}`;
 
     Linking.canOpenURL(url)
       .then((supported) => {
@@ -53,7 +52,7 @@ const Contact = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Header title="Contact Us" />
+          <Header title="Contact Us" showBack={false} showHelp={false} />
 
           <View style={styles.content}>
             <View
@@ -121,7 +120,7 @@ const Contact = () => {
                 Email: {APPEMAIL}
               </Text>
               <Text style={[styles.infoText, { color: colors.textMuted }]}>
-                Phone: 0816 032 7173
+                Phone: {PHONE_NUMBER}
               </Text>
             </View>
           </View>
@@ -134,6 +133,7 @@ const Contact = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    paddingHorizontal: 18,
   },
   container: {
     flex: 1,
@@ -142,7 +142,6 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    paddingHorizontal: 18,
     paddingTop: 60,
     paddingBottom: 16,
     flexDirection: "row",
@@ -160,7 +159,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   content: {
-    paddingHorizontal: 18,
     paddingTop: 24,
   },
   heroCard: {

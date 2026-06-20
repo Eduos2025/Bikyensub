@@ -32,7 +32,6 @@ export default function ReferralScreen() {
             {
               backgroundColor: colors.surface,
               shadowColor: colors.text,
-              marginHorizontal: 20,
             },
           ]}
         >
@@ -79,7 +78,8 @@ export default function ReferralScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F6F6F6",
+    marginHorizontal: 20,
+    marginTop: 16,
   },
 
   header: {

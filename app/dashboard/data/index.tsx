@@ -6,33 +6,35 @@ import * as LocalAuthentication from "expo-local-authentication";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 
+import AlertModal from "@/app/components/AlertModal";
+import Header from "@/app/components/header";
+import useUserStore from "@/app/states/user";
+import { detectNetworkUtil } from "@/app/utils/detect-network";
+import {
+    fetchAllDataPlans,
+    fetchPlansByType,
+} from "@/app/utils/fetch-data-plans";
+import { getDataTypes } from "@/app/utils/get-data-types";
+import { pickContact } from "@/app/utils/pick-contact";
 import { networks } from "@/constants/networks";
 import { beneficiaryType } from "@/constants/types";
+import { useTheme } from "@/context/ThemeContext";
 import {
-  ActivityIndicator,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Image,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Modal from "react-native-modal";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useTheme } from "@/context/ThemeContext";
-import AlertModal from "@/app/components/AlertModal";
-import useUserStore from "@/app/states/user";
-import { detectNetworkUtil } from "@/app/utils/detect-network";
-import { fetchAllDataPlans, fetchPlansByType } from "@/app/utils/fetch-data-plans";
-import { getDataTypes } from "@/app/utils/get-data-types";
-import { pickContact } from "@/app/utils/pick-contact";
-import { Header } from "@react-navigation/elements";
-
 
 const cleanDataPlanName = (name: string): string => {
   if (!name) return "";
@@ -47,7 +49,7 @@ const cleanDataPlanName = (name: string): string => {
     .replace(/\s\s+/g, " "); // Clean double spaces
 };
 
-const DataPage = () => {
+const index = () => {
   const { isDark, colors } = useTheme();
   const [selectedNetwork, setSelectedNetwork] = useState<{
     id: string;
@@ -124,7 +126,9 @@ const DataPage = () => {
     const params = buildReceiptParams();
     resetForm();
     router.replace({
-      pathname: success ? "/dashboard/data/data-success" : "/dashboard/data/data-failed",
+      pathname: success
+        ? "/dashboard/data/data-success"
+        : "/dashboard/data/data-failed",
       params: params,
     });
   };
@@ -409,7 +413,6 @@ const DataPage = () => {
           showsVerticalScrollIndicator={false}
         >
           <Header title="Buy Data" />
-
           {beneficiaries.length > 0 && (
             <View style={{ padding: 16 }}>
               <Text style={{ fontWeight: "700", marginBottom: 16 }}>
@@ -1050,6 +1053,7 @@ const DataPage = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    paddingHorizontal: 18,
   },
   container: {
     flex: 1,
@@ -1058,7 +1062,6 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    paddingHorizontal: 18,
     paddingTop: 60,
     paddingBottom: 16,
     flexDirection: "row",
@@ -1076,7 +1079,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   content: {
-    paddingHorizontal: 18,
     paddingTop: 24,
   },
   sectionTitle: {
@@ -1389,4 +1391,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DataPage;
+export default index;

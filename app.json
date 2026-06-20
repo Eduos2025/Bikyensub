@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Bikyensub",
-    "slug": "bikyen-sub",
+    "slug": "bikyensub",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -60,9 +60,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "978bdbc2-7e37-4068-827d-1e2cf65f4453"
+        "projectId": "f29dad5c-0e11-467e-9814-fa37c7b022da"
       }
     },
-    "owner": "smoqdev"
+    "owner": "smoqdev1"
   }
 }

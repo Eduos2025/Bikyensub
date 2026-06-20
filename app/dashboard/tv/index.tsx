@@ -116,14 +116,11 @@ const TvSubscription = () => {
   const fetchVariations = async (serviceID: string) => {
     try {
       setFetchingVariations(true);
-      const response = await fetch(
-        endPoints.getTVPlans,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ serviceID }),
-        },
-      );
+      const response = await fetch(endPoints.getTVPlans, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serviceID }),
+      });
       const responseText = await response.text();
       let data;
       try {
@@ -159,14 +156,11 @@ const TvSubscription = () => {
       setErrorMessage("");
       setErrorVisible(false);
 
-      const response = await fetch(
-        endPoints.verifySmartCard,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ smartcard, serviceID }),
-        },
-      );
+      const response = await fetch(endPoints.verifySmartCard, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ smartcard, serviceID }),
+      });
       const data = await response.json();
       if (data.success) {
         setCustomerName(data.data.customer_name);
@@ -202,7 +196,9 @@ const TvSubscription = () => {
     const params = buildReceiptParams();
     resetForm();
     router.replace({
-      pathname: success ? "/dashboard/tv/tv-success" : "/dashboard/tv/tv-failed",
+      pathname: success
+        ? "/dashboard/tv/tv-success"
+        : "/dashboard/tv/tv-failed",
       params: params,
     });
   };
@@ -212,14 +208,11 @@ const TvSubscription = () => {
       const userToken = await AsyncStorage.getItem("userToken");
       if (!userToken) return;
 
-      const response = await fetch(
-        endPoints.getBalance,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: userToken }),
-        },
-      );
+      const response = await fetch(endPoints.getBalance, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: userToken }),
+      });
 
       const data = await response.json();
       if (data.success) {
@@ -345,7 +338,7 @@ const TvSubscription = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-      <Header title="TV Subscription" />
+          <Header title="TV Subscription" />
 
           <View style={styles.content}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -1013,6 +1006,7 @@ const TvSubscription = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    paddingHorizontal: 18,
   },
   container: {
     flex: 1,
@@ -1021,7 +1015,6 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
-    paddingHorizontal: 18,
     paddingTop: 60,
     paddingBottom: 16,
     flexDirection: "row",
@@ -1039,7 +1032,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   content: {
-    paddingHorizontal: 18,
     paddingTop: 24,
   },
   sectionTitle: {

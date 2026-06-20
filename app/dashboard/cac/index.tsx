@@ -780,11 +780,10 @@ const dStyles = StyleSheet.create({
 
 // ── Page styles ───────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
+  safeArea: { flex: 1, paddingHorizontal: 18 },
   container: { flex: 1 },
   scrollContent: { paddingBottom: 50 },
   header: {
-    paddingHorizontal: 18,
     paddingTop: 60,
     paddingBottom: 16,
     flexDirection: "row",
@@ -793,7 +792,7 @@ const styles = StyleSheet.create({
   },
   headerLink: { color: "#ffffff", fontSize: 14, fontWeight: "600" },
   headerTitle: { color: "#ffffff", fontSize: 16, fontWeight: "700" },
-  content: { paddingHorizontal: 18, paddingTop: 20 },
+  content: { paddingTop: 20 },
   welcome: { fontSize: 12, marginBottom: 12 },
   actionRow: { flexDirection: "row", gap: 12, marginBottom: 4 },
   actionCard: {
