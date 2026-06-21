@@ -1,3 +1,4 @@
+import { SuccessIcon } from "@/constants/images";
 import { APPNAME } from "@/constants/variables";
 import { useTheme } from "@/context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
@@ -13,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const SuccessIcon = require("@/assets/images/success.png");
+
 
 const ExamsSuccess = () => {
   const { isDark, colors } = useTheme();

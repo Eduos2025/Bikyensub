@@ -14,3 +14,6 @@ export const CacIcon = require("@/assets/images/cac.png");
 export const mtnLogo = require("@/assets/images/mtn.png");
 export const gloLogo = require("@/assets/images/glo.png");
 export const etisalatLogo = require("@/assets/images/9mobile.png");
+
+export const SuccessIcon = require("@/assets/images/success.png");
+export const FailedIcon = require("@/assets/images/fail.png");

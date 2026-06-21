@@ -18,6 +18,7 @@ import * as Notifications from "expo-notifications";
 import { endPoints } from "@/constants/urls";
 import { useTheme } from "@/context/ThemeContext";
 import { APPNAME } from "@/constants/variables";
+import useUserStore from "@/app/states/user";
 
 const SuccessIcon = require("@/assets/images/success.png");
 
@@ -30,11 +31,7 @@ const DataSuccess = () => {
     plan?: string;
     amount?: string;
   }>();
-
-  const [refreshing, setRefreshing] = useState(false);
-  const [balance, setBalance] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [email, setEmail] = useState("");
+const balance = useUserStore((n) => n.user?.walletBalance) || 0;
 
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -68,43 +65,10 @@ const DataSuccess = () => {
     );
   };
 
-  const getBalance = async (isRefresh = false) => {
-    try {
-      if (!isRefresh) setLoading(true);
 
-      const userToken = await AsyncStorage.getItem("userToken");
-
-      if (!userToken) return;
-
-      const response = await fetch(endPoints.getBalance, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token: userToken }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setBalance(Number(data.balance) || 0);
-        setEmail(data.email || "");
-      }
-    } catch (error) {
-      console.error("Fetch balance error:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    getBalance();
-  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      getBalance(true);
       triggerVibration();
     }, []),
   );

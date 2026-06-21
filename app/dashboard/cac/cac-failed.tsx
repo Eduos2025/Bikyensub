@@ -1,3 +1,4 @@
+import { FailedIcon } from "@/constants/images";
 import { useTheme } from "@/context/ThemeContext";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -12,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const FailedIcon = require("@/assets/images/fail.png");
+
 
 const CacFailed = () => {
   const { isDark, colors } = useTheme();
